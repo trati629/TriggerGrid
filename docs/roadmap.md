@@ -170,8 +170,10 @@ All of this is browser code: no firmware changes expected.
 - Built: `src/power/` (dim to 20% after `dim` seconds, off 5 minutes later; a touch on a dark
   screen only wakes it), `POST /api/ota` plus *Update firmware* on the page, and Space Grotesk text
   fonts in `src/ui/fonts/` (`node tools/make_fonts.js`; Latin-1 plus – — ‘ ’ “ ” • … − €).
-- Not done yet: the icon font (tiles still use Montserrat symbols), self-hosted web fonts (the page
-  falls back to system fonts), and the v1.0 tag and photos, which wait for the board checks.
+- Tile icons: instead of an icon font, `node tools/make_icons.js` draws the web editor's own SVG
+  icons as A8 images (20 px regular, 18 px compact), so the pad matches the preview exactly.
+- Web fonts: Latin WOFF2 subsets of Space Grotesk and JetBrains Mono in `web/fonts/` (OFL).
+- Not done yet: the v1.0 tag and photos, which wait for the board checks.
 
 ---
 

@@ -49,9 +49,9 @@ lv_obj_t* tile_create(lv_obj_t* page, const PadTile& t, const theme::Grid& g) {
     lv_obj_set_style_outline_width(tile, 0, 0);
     lv_obj_set_style_outline_pad(tile, 2, 0);
 
-    const char* symbol = icon_symbol(t.icon);
+    const lv_image_dsc_t* icon_src = icon_image(t.icon, g.icon_size);
     // A 1×1 compact tile is too small for both: it shows the icon if it has one.
-    const bool icon_only = (g.cols == 6 && t.w == 1 && t.h == 1 && symbol);
+    const bool icon_only = (g.cols == 6 && t.w == 1 && t.h == 1 && icon_src);
 
     if (!icon_only && t.label[0]) {
         lv_obj_t* label = lv_label_create(tile);
@@ -64,11 +64,12 @@ lv_obj_t* tile_create(lv_obj_t* page, const PadTile& t, const theme::Grid& g) {
         lv_obj_align(label, LV_ALIGN_TOP_LEFT, g.label_pad, g.label_pad);
     }
 
-    if (symbol) {
-        lv_obj_t* icon = lv_label_create(tile);
-        lv_label_set_text(icon, symbol);
-        lv_obj_set_style_text_font(icon, g.icon_font, 0);
-        lv_obj_set_style_text_color(icon, lv_color_hex(t.accent), 0);
+    if (icon_src) {
+        // An A8 image is only a shape; LVGL fills it with the recolor colour.
+        lv_obj_t* icon = lv_image_create(tile);
+        lv_image_set_src(icon, icon_src);
+        lv_obj_set_style_image_recolor(icon, lv_color_hex(t.accent), 0);
+        lv_obj_set_style_image_recolor_opa(icon, LV_OPA_COVER, 0);
         lv_obj_align(icon, LV_ALIGN_BOTTOM_LEFT, g.label_pad, -g.label_pad);
     }
 

@@ -27,6 +27,8 @@ pio run -t clean           # after changing any shared header (hardware doc §P7
 pio test -e native         # firmware unit tests on the PC (needs gcc, see below)
 node tools/test_web.js     # browser compiler tests (or open web/test.html)
 node tools/make_default_config.js   # rewrite data/config.json from web/lib/default-layout.js
+node tools/make_icons.js   # after changing web/lib/icons.js: redraw src/ui/icon_images.c
+node tools/make_fonts.js   # regenerate the Space Grotesk fonts in src/ui/fonts
 ```
 
 `pio test -e native` needs `gcc`/`g++` on the PATH. On Windows, PlatformIO's own MinGW works:
