@@ -200,8 +200,8 @@ All of this is browser code: no firmware changes expected.
 M2–M9 were checked on the board on 2026-09-27: rendering, touch, swiping pages, Bluetooth typing,
 Wi-Fi (hotspot and home network) and editing a layout from the web page all work.
 
-1. **M10:** let the pad sit for the dim time (2 minutes by default) and check it dims, then goes dark
-   5 minutes later and wakes on a tap without pressing a tile. Then upload
-   `.pio/build/guition-jc3248w535/firmware.bin` from the web page's *Update firmware*.
-2. Merge PRs #2–#10 in order, then tag each milestone and `v1.0`.
+1. **M10:** dimming checked on the board (30 s setting; the `power:` lines on serial show idle time
+   and state). Still to check: upload `.pio/build/guition-jc3248w535/firmware.bin` from the web
+   page's *Update firmware*, and wake-on-tap after the screen has gone fully dark.
+2. ~~Merge PRs #2–#10, tag each milestone and `v1.0`~~ (done; tags `m2-lvgl` … `m10-polish`, `v1.0`).
 3. Photos of the pad for the README.
