@@ -253,13 +253,13 @@ some guarding:
 |------------------------------------------|-------|----------|
 | LVGL draw buffer 480×320×2               | PSRAM | 300 KB   |
 | Transpose buffer 320×480×2               | PSRAM | 300 KB   |
-| LVGL heap (`LV_MEM_SIZE`)                | SRAM  | 96 KB    |
+| LVGL heap (`LV_MEM_SIZE`, widgets and styles) | PSRAM | 1 MB  |
 | NimBLE host                              | SRAM  | ~50 KB   |
 | Wi-Fi + lwIP                             | SRAM  | ~60 KB   |
 | Web task stack + 1 KB stream buffer      | SRAM  | 9 KB     |
 | One TCP connection (lwIP buffers)        | SRAM  | ~6 KB    |
 | Parsing `pad` (ArduinoJson, filtered)    | PSRAM | < 24 KB, freed after load |
-| `Pad` struct (up to 12 × 24 tiles)       | PSRAM | < 40 KB  |
+| `Pad` struct (up to 12 × 24 tiles)       | PSRAM | ~22 KB   |
 | Embedded web app                         | Flash | ~60 KB   |
 
 The web path adds about 15 KB of SRAM while serving. The thing to watch is SRAM

@@ -1,16 +1,17 @@
 // TriggerGrid — touchscreen BLE macro pad for the Guition JC3248W535.
 //
 // Entry point. Each module listed in docs/architecture.md is brought up in
-// order by the milestones in docs/roadmap.md. M3: touch test screen.
+// order by the milestones in docs/roadmap.md. M4: the tile grid, from the
+// built-in layout; taps are only logged.
 
 #include <Arduino.h>
 #include "board_pins.h"
-#include "diag/diag.h"
+#include "config/config.h"
 #include "display/display.h"
 #include "lvgl_glue/lvgl_glue.h"
 #include "touch/touch.h"
+#include "ui/ui.h"
 
-constexpr uint8_t  BOOT_BRIGHTNESS = 180;   // matches the config default
 constexpr uint32_t BACKLIGHT_RAMP_MS = 1000;
 constexpr uint32_t STATS_PERIOD_MS = 5000;
 
@@ -20,6 +21,12 @@ static void halt(const char* why) {
     while (true) {
         delay(1000);
     }
+}
+
+// M4: taps are only logged. Bluetooth arrives in M5.
+static bool on_tile_tap(const PadTile& tile) {
+    Serial.printf("tap: %s\n", tile.label);
+    return true;
 }
 
 void setup() {
@@ -52,10 +59,16 @@ void setup() {
         halt("lvgl: could not allocate frame buffers");
     }
 
-    diag_show_touch();
+    if (!config_init()) {
+        halt("config: no PSRAM for the layout");
+    }
+    const Pad& pad = config_pad();
+    ui_on_tile_tap(on_tile_tap);
+    ui_build(pad);
+
     lvgl_glue_update();   // render the first frame before the backlight comes up
-    display_ramp_backlight(BOOT_BRIGHTNESS, BACKLIGHT_RAMP_MS);
-    Serial.println("touch: test screen shown");
+    display_ramp_backlight(pad.brightness, BACKLIGHT_RAMP_MS);
+    Serial.printf("ui: %u pages\n", pad.page_count);
 }
 
 void loop() {

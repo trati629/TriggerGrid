@@ -48,12 +48,18 @@ Status key: ✅ done · 🧪 written and builds, not yet checked on the board ·
 - Test screen: a dot follows your finger, and there's a button in each corner.
 - **Done when:** all four corner buttons respond, and a single tap fires `LV_EVENT_CLICKED` exactly once.
 
-## ⬜ M4 — Theme and bento grid (hard-coded)
+## 🧪 M4 — Theme and bento grid (hard-coded)
 
-- `src/ui/theme.h` with the tokens and swatch table from the [style guide](style-guide.md).
+- `src/ui/theme.h` with the interface tokens and grid numbers from the [style guide](style-guide.md).
+  No swatch table: tiles get final RGB values, as they will from the compiled `pad`.
+- `src/config/pad.h`: the `Pad` struct the UI draws from, and `defaults.cpp`, the built-in layout
+  written as compiled values (the web editor's default layout).
 - Tile widget: spans, solid and soft styles, label and icon placement, press animation.
 - Status bar, page container with horizontal snap, page dots.
-- Two hard-coded pages at `regular` density, plus one at `compact`, to compare them on the real screen.
+- LVGL's heap moved to PSRAM (1 MB, `include/lv_mem_psram.h`): a full 12-page layout would not fit
+  in the 96 KB of SRAM it had.
+- The built-in layout is `regular`. To compare `compact` on the panel, set `pad.density` in
+  `defaults.cpp`.
 - **Done when:** swiping is smooth, the tiles match the style guide numbers, and every swatch is
   checked on the panel (RGB565).
 
