@@ -3,6 +3,13 @@
 A touchscreen Bluetooth macro pad built on the **Guition JC3248W535** (ESP32-S3 with a 3.2″ 480×320
 touch display).
 
+<p align="center">
+  <img src="docs/images/screen-mockup.svg" width="516"
+       alt="Mockup of the TriggerGrid screen: a dark status bar reading 'Editing', and a grid of rounded coloured tiles for Copy, Paste, Email sig, Undo, a large Play / Pause tile, Vol +, Vol −, Mute, Lock and a tall Screen shot tile, with page dots below">
+</p>
+<p align="center"><sub>Design mockup (the planned screen, not a photo yet), drawn from the <a href="docs/style-guide.md">style guide</a> numbers.
+Regenerate with <code>python3 tools/make_mockup.py</code>.</sub></p>
+
 - Tap a tile to send a **key combo**, **type a snippet**, or press a **media key**. The pad shows
   up on your computer as a normal Bluetooth keyboard, so there is nothing to install.
 - Rounded **bento tiles** in a compact grid, across multiple pages you swipe between.
@@ -66,6 +73,7 @@ When the web UI exists, upload it with `pio run -t uploadfs`.
 include/        board_pins.h (pin map), lv_conf.h (LVGL config)
 src/            firmware; one folder per module (added milestone by milestone)
 data/           LittleFS image: web config page + default config.json
-docs/           the docs above
+docs/           the docs above; docs/images/ holds the README mockup
+tools/          helper scripts (make_mockup.py)
 platformio.ini  build configuration
 ```
