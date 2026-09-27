@@ -9,7 +9,6 @@
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const svg = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 20 20">${TG.ICON_SVG[name] || ''}</svg>`;
 
   // ---- talking to the device ----------------------------------------------------
 
@@ -80,7 +79,7 @@
   async function loadConfig() {
     const res = await api('GET', '/api/config');
     if (res.status === 200 && res.body && res.body.editor) {
-      state.editor = res.body.editor;
+      state.editor = TG.sanitizeEditor(res.body.editor);
     } else if (res.status !== 404) {
       toast('Could not read the layout: ' + errorOf(res), 'var(--error)');
     }
@@ -139,7 +138,7 @@
         ${esc(p.name)}<span class="count">${p.tiles.length}</span></button>`).join('');
     $('sidebar').innerHTML = `
       ${TG.renderLayout ? `<div><div class="side-title">Pages</div><div class="pages-list">${pages}
-        <button class="nav-item add" id="add-page">${svg('none')}+ Add page</button></div></div>` : ''}
+        <button class="nav-item add" id="add-page">+ Add page</button></div></div>` : ''}
       <div><div class="side-title">Device</div>
         <button class="nav-item ${state.view === 'device' ? 'active' : ''}" data-view="device">Settings</button>
         <button class="nav-item ${state.view === 'json' ? 'active' : ''}" data-view="json">config.json</button>
@@ -287,7 +286,7 @@
     try {
       const parsed = JSON.parse(await file.text());
       if (!parsed.editor || !Array.isArray(parsed.editor.pages)) throw new Error('no editor section');
-      state.editor = parsed.editor;
+      state.editor = TG.sanitizeEditor(parsed.editor);
       state.page = 0;
       state.tile = null;
       markDirty();
@@ -361,7 +360,7 @@
         try {
           const parsed = JSON.parse(v);
           if (!parsed.settings || !Array.isArray(parsed.pages)) throw new Error('needs "settings" and "pages"');
-          state.editor = parsed;
+          state.editor = TG.sanitizeEditor(parsed);
           state.jsonError = '';
         } catch (err) {
           state.jsonError = 'Not valid yet: ' + err.message;

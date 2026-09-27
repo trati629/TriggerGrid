@@ -27,6 +27,45 @@
   };
   TG.fitError = function (tile, page, density) { return TG.placeError(tile, page, density, tile); };
 
+  // Force every field of an editor section to the type the page expects.
+  // A config.json can come from anywhere (an import, or another client on the
+  // network), and numbers end up in HTML attributes and styles, so a string
+  // where a number belongs must never get through. Returns a clean copy.
+  TG.sanitizeEditor = function (editor) {
+    const str = function (v, fallback) { return typeof v === 'string' ? v : fallback; };
+    const int = function (v, fallback) { const n = Math.trunc(Number(v)); return Number.isFinite(n) ? n : fallback; };
+    const s = editor && editor.settings ? editor.settings : {};
+    return {
+      settings: {
+        deviceName: str(s.deviceName, 'TriggerGrid'),
+        density: s.density === 'compact' ? 'compact' : 'regular',
+        brightness: int(s.brightness, 180),
+        dimAfterSec: int(s.dimAfterSec, 120),
+        hostLayout: str(s.hostLayout, 'us'),
+        hostOS: str(s.hostOS, 'windows'),
+      },
+      pages: (Array.isArray(editor && editor.pages) ? editor.pages : []).map(function (p, i) {
+        return {
+          id: str(p.id, 'p' + i),
+          name: str(p.name, 'Page ' + (i + 1)),
+          tiles: (Array.isArray(p.tiles) ? p.tiles : []).map(function (t, j) {
+            const a = t.action || {};
+            const action = a.type === 'text' ? { type: 'text', text: str(a.text, ''), charDelayMs: int(a.charDelayMs, 10) }
+              : a.type === 'media' ? { type: 'media', key: str(a.key, 'PLAY_PAUSE') }
+              : { type: 'keys', keys: (Array.isArray(a.keys) ? a.keys : []).map(function (k) { return String(k); }) };
+            return {
+              id: str(t.id, 't' + i + '-' + j),
+              x: int(t.x, 0), y: int(t.y, 0), w: int(t.w, 1), h: int(t.h, 1),
+              label: str(t.label, ''), icon: str(t.icon, 'none'),
+              color: str(t.color, 'graphite'), style: t.style === 'soft' ? 'soft' : 'solid',
+              action: action,
+            };
+          }),
+        };
+      }),
+    };
+  };
+
   // The pad's font covers printable ASCII only (until the custom font lands),
   // so other characters in a label show as nothing. Not an error, a warning.
   TG.labelWarning = function (label) {

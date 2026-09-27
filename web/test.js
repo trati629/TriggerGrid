@@ -45,6 +45,10 @@
       ['Default layout: Copy icon is 1', def.pages[0].tiles[0].icon, 1],
       ['Default layout: Email sig icon is 3', def.pages[0].tiles[2].icon, 3],
       ['Default layout: Play / Pause icon is 5', def.pages[0].tiles[4].icon, 5],
+      ['sanitizeEditor turns a hostile x into a number',
+        TG.sanitizeEditor({ settings: {}, pages: [{ name: 'P', tiles: [{ x: '"><img src=x>', label: 'A' }] }] }).pages[0].tiles[0].x, 0],
+      ['sanitizeEditor keeps a valid layout intact',
+        JSON.stringify(TG.sanitizeEditor(TG.defaultEditor())), JSON.stringify(TG.defaultEditor())],
       ['Default file is under 32 KB', TG.savedFile(TG.defaultEditor()).length < TG.MAX_FILE, true],
     ];
   };

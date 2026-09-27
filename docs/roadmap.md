@@ -144,7 +144,7 @@ This milestone has two halves. The browser half needs no hardware.
   backup, and a `config.json` view that compiles and saves. Oversized bodies are read and dropped
   rather than refused before reading (the core `WebServer` always reads the body).
 
-## ⬜ M9 — Visual web editor
+## 🧪 M9 — Visual web editor
 
 Design reference: [mockups/web-config.html](mockups/web-config.html) (see [mockups/README.md](mockups/README.md)).
 All of this is browser code: no firmware changes expected.
@@ -156,6 +156,10 @@ All of this is browser code: no firmware changes expected.
   don't fit.
 - Export and import `config.json` (the browser recompiles `pad` on import). Optional web PIN.
 - **Done when:** someone who has never seen the JSON can build a page from a phone.
+- Built: `web/editor.js` (the mockup's preview, tile editor, tray, drag and drop, record combo,
+  delete page, density misfit warning) on top of `app.js`; "Try it" calls `POST /api/test`.
+  `TG.sanitizeEditor()` forces every loaded or imported layout into the expected types. Checked
+  in Chrome against the mock device; not yet against the pad.
 
 ## ⬜ M10 — Polish
 
