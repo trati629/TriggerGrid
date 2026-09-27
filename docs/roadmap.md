@@ -174,7 +174,8 @@ All of this is browser code: no firmware changes expected.
 - Tile icons: instead of an icon font, `node tools/make_icons.js` draws the web editor's own SVG
   icons as A8 images (20 px regular, 18 px compact), so the pad matches the preview exactly.
 - Web fonts: Latin WOFF2 subsets of Space Grotesk and JetBrains Mono in `web/fonts/` (OFL).
-- Not done yet: the v1.0 tag and photos, which wait for the board checks.
+- Checked on the board: dimming, screen off and wake on tap. Tagged `v1.0`; photo in the README.
+- Not checked yet: *Update firmware* from the web page.
 
 ---
 
@@ -200,8 +201,8 @@ All of this is browser code: no firmware changes expected.
 M2–M9 were checked on the board on 2026-09-27: rendering, touch, swiping pages, Bluetooth typing,
 Wi-Fi (hotspot and home network) and editing a layout from the web page all work.
 
-1. **M10:** dimming checked on the board (30 s setting; the `power:` lines on serial show idle time
-   and state). Still to check: upload `.pio/build/guition-jc3248w535/firmware.bin` from the web
-   page's *Update firmware*, and wake-on-tap after the screen has gone fully dark.
+1. **M10:** dimming and wake-on-tap checked on the board (30 s setting; the `power:` lines on
+   serial show idle time and state). Still to check: upload
+   `.pio/build/guition-jc3248w535/firmware.bin` from the web page's *Update firmware*.
 2. ~~Merge PRs #2–#10, tag each milestone and `v1.0`~~ (done; tags `m2-lvgl` … `m10-polish`, `v1.0`).
-3. Photos of the pad for the README.
+3. ~~Photos of the pad for the README~~ (done: `docs/images/pad-photo.jpg`).

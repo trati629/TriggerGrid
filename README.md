@@ -4,11 +4,11 @@ A touchscreen Bluetooth macro pad built on the **Guition JC3248W535** (ESP32-S3 
 touch display).
 
 <p align="center">
-  <img src="docs/images/screen-mockup.svg" width="516"
-       alt="Mockup of the TriggerGrid screen: a dark status bar reading 'Editing', and a grid of rounded coloured tiles for Copy, Paste, Email sig, Undo, a large Play / Pause tile, Vol +, Vol −, Mute, Lock and a tall Screen shot tile, with page dots below">
+  <img src="docs/images/pad-photo.jpg" width="600"
+       alt="Photo of the TriggerGrid pad on a table: a dark status bar reading 'Editing' with Wi-Fi and Bluetooth icons, and a grid of rounded coloured tiles for Copy, Paste, Email sig, Undo, a large Play / Pause tile, Vol +, Vol −, Mute, Lock and a tall Screen shot tile, with page dots below">
 </p>
-<p align="center"><sub>Design mockup (the planned screen, not a photo yet), drawn from the <a href="docs/style-guide.md">style guide</a> numbers.
-Regenerate with <code>python3 tools/make_mockup.py</code>.</sub></p>
+<p align="center"><sub>The finished pad. Compare it with the <a href="docs/images/screen-mockup.svg">design mockup</a> drawn
+from the <a href="docs/style-guide.md">style guide</a> numbers (<code>python3 tools/make_mockup.py</code>).</sub></p>
 
 - Tap a tile to send a **key combo**, **type a snippet**, or press a **media key**. The pad shows
   up on your computer as a normal Bluetooth keyboard, so there is nothing to install.
@@ -27,8 +27,8 @@ This repo is also the reference project for a blog series about programming this
 check out the code as it was at any step.
 
 > **Status:** M0–M9 are done and checked on the board: it renders, swipes, types over Bluetooth and
-> is configured from the web page. M10 (polish) is written and waiting for its board check. See the
-> [roadmap](docs/roadmap.md).
+> is configured from the web page. M10 (polish) is checked too, except updating the firmware from
+> the web page. See the [roadmap](docs/roadmap.md).
 
 ## Hardware
 
