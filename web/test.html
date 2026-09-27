@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TriggerGrid compiler tests</title>
+<!-- Open this file straight from disk. It checks web/lib against known answers
+     and can download the default data/config.json. Not embedded in the firmware. -->
+<style>
+  :root { --bg: #101112; --surface-1: #1A1C1E; --line: #383C41; --text: #F2F3F4; --text-muted: #A0A6AC;
+          --on-bright: #0E0F10; --ok: #3DDC84; --error: #FF4D4F; color-scheme: dark; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, sans-serif; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  .summary { margin-bottom: 16px; font-weight: 600; }
+  .ok { color: var(--ok); } .fail { color: var(--error); }
+  table { border-collapse: collapse; width: 100%; max-width: 900px; }
+  td { border-bottom: 1px solid var(--line); padding: 6px 8px; vertical-align: top; }
+  td code { font: 12px ui-monospace, Consolas, monospace; color: var(--text-muted); word-break: break-all; }
+  button { margin-top: 20px; height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--text);
+           background: var(--text); color: var(--on-bright); font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>TriggerGrid compiler tests</h1>
+<div class="summary" id="summary"></div>
+<table id="results"></table>
+<button id="download">Download default config.json</button>
+
+<script src="lib/swatches.js"></script>
+<script src="lib/icons.js"></script>
+<script src="lib/keymap.js"></script>
+<script src="lib/layouts/us.js"></script>
+<script src="lib/unicode.js"></script>
+<script src="lib/validate.js"></script>
+<script src="lib/compile.js"></script>
+<script src="lib/default-layout.js"></script>
+<script src="test.js"></script>
+<script>
+  const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const rows = TG.tests().map(([name, actual, expected]) => {
+    const pass = String(actual) === String(expected);
+    return `<tr><td class="${pass ? 'ok' : 'fail'}">${pass ? 'pass' : 'FAIL'}</td><td>${esc(name)}` +
+      (pass ? '' : `<br><code>got ${esc(actual)}<br>expected ${esc(expected)}</code>`) + '</td></tr>';
+  });
+  const r = TG.runTests();
+  document.getElementById('results').innerHTML = rows.join('');
+  const summary = document.getElementById('summary');
+  summary.textContent = `${r.passed} passed, ${r.failed.length} failed`;
+  summary.className = 'summary ' + (r.failed.length ? 'fail' : 'ok');
+
+  // Save it as data/config.json, then `pio run -t uploadfs`.
+  document.getElementById('download').addEventListener('click', () => {
+    const blob = new Blob([TG.savedFile(TG.defaultEditor()) + '\n'], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'config.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+</script>
+</body>
+</html>

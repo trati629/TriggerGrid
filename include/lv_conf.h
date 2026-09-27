@@ -14,8 +14,11 @@
 // defining LV_COLOR_DEPTH directly is deprecated.
 #define LV_COLOR_FORMAT_DEFAULT LV_COLOR_FORMAT_RGB565
 
-// Memory: LVGL's own heap. Frame buffers are allocated separately in PSRAM.
-#define LV_MEM_SIZE (96U * 1024U)
+// Memory: LVGL's own heap, 1 MB in PSRAM (see lv_mem_psram.h for why).
+// Frame buffers are allocated separately, also in PSRAM.
+#define LV_MEM_SIZE (1024U * 1024U)
+#define LV_MEM_POOL_INCLUDE "lv_mem_psram.h"
+#define LV_MEM_POOL_ALLOC lv_psram_pool_alloc
 
 // Ticks are driven manually from loop() with lv_tick_inc() — see
 // hardware doc §P8. Do not rely on a custom tick source.
@@ -28,6 +31,8 @@
 #define LV_FONT_MONTSERRAT_16 1
 #define LV_FONT_MONTSERRAT_20 1
 #define LV_FONT_DEFAULT &lv_font_montserrat_14
+
+#define LV_USE_QRCODE 1              // Wi-Fi hotspot QR code in the device menu
 
 #define LV_USE_LOG 0
 
