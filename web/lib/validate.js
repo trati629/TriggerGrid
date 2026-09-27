@@ -66,10 +66,16 @@
     };
   };
 
-  // The pad's font covers printable ASCII only (until the custom font lands),
-  // so other characters in a label show as nothing. Not an error, a warning.
+  // The pad's font (src/ui/fonts, tools/make_fonts.js) has Latin-1 plus a few
+  // typographic marks. Other characters in a label show as nothing on the
+  // pad. Not an error, a warning.
+  const PAD_EXTRA_GLYPHS = '–—‘’“”•…−€';
+  function padCanShow(c) {
+    const cp = c.codePointAt(0);
+    return (cp >= 0x20 && cp <= 0x7E) || (cp >= 0xA0 && cp <= 0xFF) || PAD_EXTRA_GLYPHS.includes(c);
+  }
   TG.labelWarning = function (label) {
-    const odd = [...new Set([...(label || '')].filter(function (c) { return c < ' ' || c > '~'; }))];
+    const odd = [...new Set([...(label || '')].filter(function (c) { return !padCanShow(c); }))];
     return odd.length ? 'The pad can’t show ' + odd.map(function (c) { return '“' + c + '”'; }).join(', ') + ' yet.' : '';
   };
 

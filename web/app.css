@@ -1,5 +1,12 @@
 /* app.css — the web config page. Tokens and sizes: docs/style-guide.md.
    Started from docs/mockups/web-config.html; keep the two in step. */
+
+/* Self-hosted Latin subsets (web/fonts, SIL OFL): the page must work on the
+   pad's hotspot with no internet. Space Grotesk is one variable file. */
+@font-face { font-family: 'Space Grotesk'; font-style: normal; font-weight: 300 700; font-display: swap;
+             src: url(fonts/space-grotesk-latin.woff2) format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 500; font-display: swap;
+             src: url(fonts/jetbrains-mono-500-latin.woff2) format('woff2'); }
 :root {
   --bg: #101112; --surface-1: #1A1C1E; --surface-2: #24272A; --surface-3: #2E3236;
   --line: #383C41; --text: #F2F3F4; --text-muted: #A0A6AC; --text-faint: #62696F;

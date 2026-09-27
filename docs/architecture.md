@@ -71,7 +71,7 @@ them. It doesn't need to know what a key *means* to do that.
 |-----------------|-----------------------------------------------------|-----|
 | Toolchain       | PlatformIO in VS Code, pioarduino (Arduino core 3.x) | Needed by GFX Library ≥ 1.6. Arduino API is easy to follow in blog posts |
 | Display driver  | Arduino_GFX `Arduino_AXS15231B`, type1 init          | Only known-good path for this panel (see hardware doc §P1) |
-| UI              | LVGL 9, landscape 480×320, full-frame render + software transpose | Hardware and LVGL rotation are broken on this board; Solution 4 is confirmed working |
+| UI              | LVGL 9, landscape 480×320, partial render + software transpose into a full frame | Hardware and LVGL rotation are broken on this board; Solution 4 is confirmed working. Only changed areas are redrawn; the panel always gets whole frames (§P9) |
 | Touch           | Own I2C driver for AXS15231B                         | No library handles the unlock command and multi-pulse INT |
 | Bluetooth       | NimBLE-Arduino 2.x, own HID keyboard + consumer report map | Smaller and more reliable than Bluedroid; older `BleKeyboard` libraries break on core 3.x |
 | Web server      | Arduino core `WebServer` (synchronous) in its **own task on core 0** | Ships with the core; one connection at a time keeps RAM predictable; runs off the UI core so page loads never stall the screen |
@@ -99,7 +99,9 @@ Each module is a folder under `src/` with a small header that exposes a C-style 
 | `actions`  | `src/actions/` | Runs a tile's pre-compiled action: one chord, one consumer key, or a keystroke list with a delay |
 | `hid`      | `src/hid/`     | NimBLE HID device: keyboard + consumer reports, pairing, connection state |
 | `net`      | `src/net/`     | Wi-Fi STA with AP fallback, mDNS, credentials in NVS |
-| `web`      | `src/web/`     | Web task: serves the embedded app, streams `config.json`, small JSON API |
+| `web`      | `src/web/`     | Web task: serves the embedded app, streams `config.json`, small JSON API, firmware updates |
+| `power`    | `src/power/`   | Backlight level, idle dimming and screen-off; a touch on a dark screen only wakes it |
+| `diag`     | `src/diag/`    | Bring-up test screens (corners, touch), kept for debugging |
 
 ## Threads and ownership
 
@@ -228,6 +230,7 @@ Responses are small. Only `/api/status` and `/api/wifi/scan` build JSON on the d
 | POST   | `/api/ble/forget` | Clears bonds so the pad can pair with another computer | — |
 | POST   | `/api/pin`        | `{ "old", "new" }`: set or change the web PIN | NVS write |
 | POST   | `/api/reboot`     | — | — |
+| POST   | `/api/ota`        | A firmware `.bin` as the body. Written to the other app partition, verified, then the pad restarts into it | Flash write |
 
 Request limits, checked from `Content-Length`: 32 KB for `/api/config`, 4 KB for everything
 else. Anything larger gets a `413`. The core `WebServer` still reads the body off the socket, but
@@ -252,8 +255,8 @@ some guarding:
 
 | Item                                     | Where | Size     |
 |------------------------------------------|-------|----------|
-| LVGL draw buffer 480×320×2               | PSRAM | 300 KB   |
-| Transpose buffer 320×480×2               | PSRAM | 300 KB   |
+| LVGL draw buffer 480×40×2 (strips)       | SRAM  | 38 KB    |
+| Panel frame 320×480×2 (transposed)       | PSRAM | 300 KB   |
 | LVGL heap (`LV_MEM_SIZE`, widgets and styles) | PSRAM | 1 MB  |
 | NimBLE host                              | SRAM  | ~50 KB   |
 | Wi-Fi + lwIP                             | SRAM  | ~60 KB   |

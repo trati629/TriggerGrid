@@ -1,7 +1,8 @@
 // TriggerGrid — touchscreen BLE macro pad for the Guition JC3248W535.
 //
-// Entry point. Each module listed in docs/architecture.md is brought up in
-// order by the milestones in docs/roadmap.md. M8: the web page and its API.
+// Entry point: brings the modules up in the order of docs/architecture.md
+// ("Boot sequence"), then runs the UI in loop(). Only loop() touches LVGL;
+// the touch, actions and web tasks talk to it through flags and queues.
 
 #include <Arduino.h>
 #include "actions/actions.h"
@@ -11,6 +12,7 @@
 #include "hid/hid.h"
 #include "lvgl_glue/lvgl_glue.h"
 #include "net/net.h"
+#include "power/power.h"
 #include "touch/touch.h"
 #include "ui/menu.h"
 #include "ui/ui.h"
@@ -37,7 +39,7 @@ static bool on_tile_tap(const PadTile& tile) {
 }
 
 // Draw the current layout, with a status-bar warning if /config.json was
-// rejected (the full reason is on serial).
+// rejected (the full reason is on serial). Brightness is set by the caller.
 static void show_layout() {
     const Pad& pad = config_pad();
     ui_build(pad);
@@ -126,6 +128,8 @@ void setup() {
 
     lvgl_glue_update();   // render the first frame before the backlight comes up
     display_ramp_backlight(pad.brightness, BACKLIGHT_RAMP_MS);
+    power_set_level(pad.brightness);
+    power_set_dim_after(pad.dim_sec);
     Serial.printf("ui: %u pages\n", pad.page_count);
 }
 
@@ -134,21 +138,23 @@ void loop() {
     net_update();
     update_ble_status();
     update_wifi_status();
+    power_update();
 
     // A new config.json was saved: reload it and rebuild the screens at once
     // (the UI points into the Pad, see config_reload()).
     if (config_take_dirty()) {
         config_reload();
         show_layout();
-        display_set_brightness(config_pad().brightness);
+        power_set_level(config_pad().brightness);
+        power_set_dim_after(config_pad().dim_sec);
     }
 
     static uint32_t last_stats = 0;
     if (millis() - last_stats >= STATS_PERIOD_MS) {
         last_stats = millis();
         FlushStats s = lvgl_glue_flush_stats();
-        Serial.printf("frame: transpose %lu us + push %lu us (%lu frames) | heap %lu, PSRAM %lu\n",
-                      (unsigned long)s.transpose_us, (unsigned long)s.push_us,
+        Serial.printf("frame: %lu us (transpose %lu + push %lu, rest is rendering) (%lu frames) | heap %lu, PSRAM %lu\n",
+                      (unsigned long)s.refresh_us, (unsigned long)s.transpose_us, (unsigned long)s.push_us,
                       (unsigned long)s.frames, (unsigned long)ESP.getFreeHeap(),
                       (unsigned long)ESP.getFreePsram());
     }

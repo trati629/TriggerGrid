@@ -59,13 +59,17 @@ static void start_mdns() {
 }
 
 static void start_hotspot() {
-    // TriggerGrid-XXXX: the last two bytes of the MAC tell pads apart.
+    if (s_mode == NetMode::Connecting && WiFi.getMode() != WIFI_OFF) {
+        WiFi.disconnect(true);   // stop trying the saved network
+    }
+    WiFi.mode(WIFI_AP);
+
+    // TriggerGrid-XXXX: the last two bytes of the MAC tell pads apart. Read
+    // after WiFi.mode(), once the radio has its address.
     uint8_t mac[6];
-    WiFi.macAddress(mac);
+    WiFi.softAPmacAddress(mac);
     snprintf(s_ssid, sizeof(s_ssid), "TriggerGrid-%02X%02X", mac[4], mac[5]);
 
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_AP);
     WiFi.softAP(s_ssid, s_ap_password);   // WPA2: the hotspot is never open
     s_mode = NetMode::AccessPoint;
     start_mdns();

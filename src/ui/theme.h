@@ -7,6 +7,8 @@
 #include <lvgl.h>
 #include <stdint.h>
 
+#include "fonts/fonts.h"
+
 namespace theme {
 
 // ---- colour tokens (style guide, "UI tokens") ----
@@ -42,18 +44,17 @@ struct Grid {
     int32_t  radius;             // same on every span: that is the bento look
     int32_t  label_pad;          // label and icon inset from the tile edge
     const lv_font_t* label_font;
-    const lv_font_t* icon_font;
+    int32_t  icon_size;          // px; the tile icons come in 20 and 18
 };
 
 // regular: 8 + 5·88 + 4·6 + 8 = 480 wide, 6 + 3·88 + 2·6 + 6 = 288 tall
 // compact: 6 + 6·73 + 5·6 + 6 = 480 wide, 7 + 4·64 + 3·6 + 7 = 288 tall
-// Icons should be 18 px on compact; Montserrat 16 stands in until the icon
-// font exists (roadmap M10).
+// Labels are Space Grotesk; icons are the web editor's SVGs (ui/icons.h).
 inline const Grid& grid(uint8_t density) {
     static const Grid regular = {5, 3, 88, 88, 6, 8, 6, 14, 10,
-                                 &lv_font_montserrat_16, &lv_font_montserrat_20};
+                                 &space_grotesk_medium_16, 20};
     static const Grid compact = {6, 4, 73, 64, 6, 6, 7, 12, 8,
-                                 &lv_font_montserrat_14, &lv_font_montserrat_16};
+                                 &space_grotesk_medium_14, 18};
     return density == 1 ? compact : regular;
 }
 
