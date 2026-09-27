@@ -91,9 +91,9 @@ Each module is a folder under `src/` with a small header that exposes a C-style 
 | Module     | Folder         | Responsibility |
 |------------|----------------|----------------|
 | `board`    | `include/board_pins.h` | Pin map and panel geometry. The only place with GPIO numbers |
-| `display`  | `src/display/` | QSPI bus, AXS15231B init, backlight, the transposing flush |
+| `display`  | `src/display/` | QSPI bus, AXS15231B init, backlight, `display_push_frame()`: every frame goes to the panel whole, from (0,0) (hardware doc §P9) |
 | `touch`    | `src/touch/`   | I2C read with unlock command, INT debounce, portrait → landscape mapping |
-| `lvgl_glue`| `src/lvgl_glue/` | LVGL display + input device registration, PSRAM buffers, tick |
+| `lvgl_glue`| `src/lvgl_glue/` | LVGL display + input device registration, PSRAM buffers, the transposing flush, tick |
 | `ui`       | `src/ui/`      | Status bar, pages, tiles, device menu. Draws from the `Pad` struct: colours arrive as final RGB values |
 | `config`   | `src/config/`  | Reads the `pad` section of `config.json` into a `Pad` struct; bounds checks; built-in default |
 | `actions`  | `src/actions/` | Runs a tile's pre-compiled action: one chord, one consumer key, or a keystroke list with a delay |

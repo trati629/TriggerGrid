@@ -27,6 +27,7 @@ bool display_init() {
     if (!s_gfx->begin()) {
         return false;
     }
+    // Safe despite §P9: fillScreen() covers the whole panel from (0,0).
     s_gfx->fillScreen(RGB565_BLACK);
     return true;
 }
@@ -38,6 +39,8 @@ Arduino_GFX* display_get_gfx() {
 void display_push_frame(const uint16_t* frame) {
     // Always the whole panel from (0,0). The AXS15231B ignores the row window
     // for partial writes, so fillRect() and friends all draw at the top (§P9).
+    // Keep x = 0, y = 0 and the full PANEL_W × PANEL_H size here, even when
+    // only part of the picture changed.
     s_gfx->draw16bitRGBBitmap(0, 0, const_cast<uint16_t*>(frame), PANEL_W, PANEL_H);
 }
 
