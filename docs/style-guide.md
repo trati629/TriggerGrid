@@ -197,6 +197,17 @@ The web page applies the same rules to a browser layout.
   or scaled to fit on phones), using the same tile sizes, radii and colours.
 - Tap a tile in the preview to edit it in a side sheet (a bottom sheet on phones) on `surface-2`:
   label, icon, colour swatch picker, style, span, action.
+- **Drag and drop** places tiles on the preview. It uses pointer events so mouse and touch both work:
+  - **Add:** drag a blank tile or a preset from the *Add tiles* tray (below the preview) onto the screen.
+  - **Move:** drag a tile. A press that moves less than 5 px is a tap and opens the editor instead.
+  - **Resize:** drag the corner handle of the selected tile: a 20 px `text` square with a
+    2 px `bg` border. Spans stay within 1–2 cells.
+  - **Delete:** drag a tile back onto the tray. While a tile is dragged the tray turns into a dashed
+    "Drop here to delete" zone, which goes `error` when the pointer is over it.
+  - While dragging, the tile follows the pointer at 85% opacity with a 2 px `text` outline, and a
+    dashed outline snaps to the grid cell it would land in. Both turn `error` when the spot is
+    taken or off the grid. Dropping there does nothing and shows why.
+  - Keyboard: arrow keys move the focused tile one cell.
 - The key combo editor shows keys as keycaps: `surface-3` fill, 1 px `line` border, 6 px
   radius, JetBrains Mono.
 - Buttons: the primary action (Save to device) uses a `text` background with `on-bright` text.

@@ -99,6 +99,40 @@ main.no-editor .editor { display: none; }
         display: flex; flex-direction: column; justify-content: space-between; font-size: 16px; font-weight: 500; line-height: 19px;
         transition: transform 80ms ease-out, filter 80ms ease-out; }
 .tile:active { transform: scale(.96); filter: brightness(.8); }
+/* Drag and drop. Pointer events are used (not HTML5 drag) so touch works too. */
+.tile, .tray-item, .resize { touch-action: none; -webkit-user-select: none; user-select: none; }
+.tray-item { touch-action: pan-x; }   /* horizontal swipes scroll the tray; vertical drags pick up a tile */
+.tile { cursor: grab; }
+.tile.drag-src { opacity: .3; }
+.drop-ind { position: absolute; z-index: 3; pointer-events: none; border-radius: var(--radius-tile);
+            border: 2px dashed var(--text); background: color-mix(in srgb, var(--text) 10%, transparent); }
+.drop-ind.bad { border-color: var(--error); background: color-mix(in srgb, var(--error) 14%, transparent); }
+.compact .drop-ind { border-radius: 12px; }
+.ghost { position: fixed; left: 0; top: 0; z-index: 30; pointer-events: none; transform-origin: 0 0; }
+.ghost { opacity: .85; }
+.ghost .tile { outline: 2px solid var(--text); outline-offset: 2px; cursor: grabbing; }
+.ghost.bad .tile { outline-color: var(--error); }
+.resize { position: absolute; z-index: 4; width: 20px; height: 20px; border-radius: 6px; background: var(--text);
+          border: 2px solid var(--bg); cursor: nwse-resize; display: grid; place-items: center; color: var(--on-bright); }
+.resize svg.i { width: 12px; height: 12px; stroke-width: 2.4; }
+body.dragging, body.dragging * { cursor: grabbing !important; }
+body.dragging .cell { color: transparent; }   /* don't show + through the dragged tile */
+
+/* ---------- tile tray ---------- */
+.tray { position: relative; width: 100%; max-width: 560px; background: var(--surface-1); border: 1px solid var(--line);
+        border-radius: var(--radius-panel); padding: 12px 12px 14px; }
+.tray-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; font-size: 13px; font-weight: 500; }
+.tray-group { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-faint); margin: 12px 0 6px; }
+.tray-group:first-of-type { margin-top: 0; }
+.tray-items { display: flex; flex-wrap: wrap; gap: 8px; }
+.tray-item { flex: none; width: 76px; height: 60px; border-radius: 12px; border: 0; padding: 8px; cursor: grab; text-align: left;
+             display: flex; flex-direction: column; justify-content: space-between; font-size: 12px; font-weight: 500; line-height: 14px; overflow: hidden; }
+.tray-item svg.i { width: 16px; height: 16px; }
+.tray-item:hover { outline: 1px solid var(--text-faint); outline-offset: 2px; }
+.tray-trash { position: absolute; inset: 0; border-radius: var(--radius-panel); display: none; place-items: center; gap: 4px;
+              background: var(--surface-1); border: 2px dashed var(--line); color: var(--text-muted); font-weight: 500; }
+.tray.trash .tray-trash { display: grid; }
+.tray.trash.hot .tray-trash { border-color: var(--error); color: var(--error); background: color-mix(in srgb, var(--error) 10%, var(--surface-1)); }
 .tile .label { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
 .tile svg.i { width: 20px; height: 20px; }
 .tile.soft::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--sw); }
@@ -179,6 +213,7 @@ details summary { cursor: pointer; color: var(--text-muted); font-size: 13px; pa
   .editor::before { content: ''; align-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--line); margin-bottom: -8px; }
   .divider { margin: 0 -16px; }
   .cards { grid-template-columns: 1fr; }
+  .tray-items { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }   /* swipe sideways on phones */
 }
 </style>
 </head>
@@ -247,6 +282,8 @@ const ICONS = {
   search: '<circle cx="9" cy="9" r="6"/><path d="m13.5 13.5 4.5 4.5"/>',
   mic: '<rect x="7" y="2" width="6" height="10" rx="3"/><path d="M4 10a6 6 0 0 0 12 0M10 16v3"/>',
   terminal: '<rect x="2" y="3" width="16" height="14" rx="2"/><path d="m5 8 3 2-3 2M10 13h5"/>',
+  keyboard: '<rect x="2" y="5" width="16" height="10" rx="2"/><path d="M5.5 8.5h.01M8.5 8.5h.01M11.5 8.5h.01M14.5 8.5h.01M6 12h8"/>',
+  type: '<path d="M4 5V3.5h12V5M10 3.5v13M7.5 16.5h5"/>',
   none: '',
 };
 const MEDIA_KEYS = ['PLAY_PAUSE','NEXT_TRACK','PREV_TRACK','STOP','MUTE','VOLUME_UP','VOLUME_DOWN','BRIGHTNESS_UP','BRIGHTNESS_DOWN'];
@@ -302,12 +339,15 @@ function toast(msg, color = 'var(--ok)') {
 }
 
 // Grid rules from config-schema.md: fits inside the grid, no overlaps.
-function fitError(t, pg = page()) {
+// `spot` is {x, y, w, h}; `ignore` is the tile being moved or resized.
+function placeError(spot, pg = page(), ignore = null) {
   const g = GRID[config.settings.density];
-  if (t.x + t.w > g.cols || t.y + t.h > g.rows) return `Doesn't fit: the ${config.settings.density} grid is ${g.cols}×${g.rows}.`;
-  const hit = pg.tiles.find(o => o !== t && t.x < o.x + o.w && o.x < t.x + t.w && t.y < o.y + o.h && o.y < t.y + t.h);
-  return hit ? `Overlaps “${hit.label}”. Move one of them first.` : '';
+  if (spot.x < 0 || spot.y < 0 || spot.x + spot.w > g.cols || spot.y + spot.h > g.rows)
+    return `Doesn't fit: the ${config.settings.density} grid is ${g.cols}×${g.rows}.`;
+  const hit = pg.tiles.find(o => o !== ignore && spot.x < o.x + o.w && o.x < spot.x + spot.w && spot.y < o.y + o.h && o.y < spot.y + spot.h);
+  return hit ? `Overlaps “${hit.label}”.` : '';
 }
+const fitError = (t, pg = page()) => placeError(t, pg, t);
 
 // ---- sidebar ---------------------------------------------------------------
 function renderSidebar() {
@@ -333,17 +373,11 @@ function renderPreview() {
   let cells = '';
   for (let y = 0; y < g.rows; y++) for (let x = 0; x < g.cols; x++)
     if (!used.has(x + ',' + y)) cells += `<button class="cell" data-cell="${x},${y}" title="Add tile" style="${px(tileRect({ x, y, w: 1, h: 1 }, g))}">+</button>`;
-  const tiles = pg.tiles.map(t => {
-    const [sw, on] = SWATCHES[t.color] || SWATCHES.graphite;
-    const soft = t.style === 'soft';
-    const bg = soft ? `color-mix(in srgb, ${sw} 16%, var(--surface-1))` : sw;
-    const fg = soft ? 'var(--text)' : on, ic = soft ? sw : on;
-    const small = config.settings.density === 'compact' && t.w === 1 && t.h === 1 && t.icon && t.icon !== 'none';
-    return `<button class="tile ${soft ? 'soft' : ''} ${t.id === state.tile ? 'sel' : ''}" data-tile="${t.id}"
-      style="${px(tileRect(t, g))};background:${bg};color:${fg};--sw:${sw}">
-      ${small ? '<span></span>' : `<span class="label">${esc(t.label)}</span>`}
-      <span style="color:${ic}">${svg(t.icon)}</span></button>`;
-  }).join('');
+  const tiles = pg.tiles.map(t => tileHTML(t, tileRect(t, g), t.id === state.tile ? 'sel' : '')).join('');
+  const sel = pg.tiles.find(t => t.id === state.tile), sr = sel && tileRect(sel, g);
+  const handle = sel ? `<div class="resize" data-resize="${sel.id}" title="Drag to resize"
+      style="left:${sr.left + sr.width - 13}px;top:${sr.top + sr.height - 13}px">
+      <svg class="i" viewBox="0 0 20 20"><path d="M7 17h10V7M3 13l10-10"/></svg></div>` : '';
   return `
     <div class="device-wrap" id="device-wrap"><div class="device" id="device">
       <div class="screen ${config.settings.density}">
@@ -351,9 +385,23 @@ function renderPreview() {
           <svg class="i" viewBox="0 0 20 20"><path d="M3 8a10 10 0 0 1 14 0M6 11a6 6 0 0 1 8 0"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
           <svg class="i" viewBox="0 0 20 20"><path d="m5 6 9 8-4 3.5v-15L14 6l-9 8"/></svg>
           <span class="host">Desk-PC</span></div>
-        ${cells}${tiles}
+        ${cells}${tiles}${handle}
         ${config.pages.length > 1 ? `<div class="pdots">${config.pages.map((_, i) => `<i class="${i === state.page ? 'on' : ''}"></i>`).join('')}</div>` : ''}
       </div></div></div>`;
+}
+
+function tileColors(t) {
+  const [sw, on] = SWATCHES[t.color] || SWATCHES.graphite, soft = t.style === 'soft';
+  return { sw, soft, bg: soft ? `color-mix(in srgb, ${sw} 16%, var(--surface-1))` : sw,
+           fg: soft ? 'var(--text)' : on, ic: soft ? sw : on };
+}
+function tileHTML(t, rect, extra = '') {
+  const c = tileColors(t);
+  const small = config.settings.density === 'compact' && t.w === 1 && t.h === 1 && t.icon && t.icon !== 'none';
+  return `<button class="tile ${c.soft ? 'soft' : ''} ${extra}" data-tile="${t.id}" aria-label="${esc(t.label)}, ${t.w}×${t.h} at column ${t.x + 1}, row ${t.y + 1}"
+    style="${px(rect)};background:${c.bg};color:${c.fg};--sw:${c.sw}">
+    ${small ? '<span></span>' : `<span class="label">${esc(t.label)}</span>`}
+    <span style="color:${c.ic}">${svg(t.icon)}</span></button>`;
 }
 
 // Scale the 1:1 device preview down only when the stage is narrower than it.
@@ -362,7 +410,47 @@ function fitDevice() {
   if (!wrap) return;
   const s = Math.min(1, wrap.parentElement.clientWidth / 516);
   dev.style.transform = `scale(${s})`;
-  const note = $('scale-note'); if (note) note.textContent = s < 1 ? `Scaled to ${Math.round(s * 100)}%.` : 'Actual size.'; wrap.style.width = 516 * s + 'px'; wrap.style.height = 356 * s + 'px';
+  wrap.style.width = 516 * s + 'px';
+  wrap.style.height = 356 * s + 'px';
+  const note = $('scale-note');
+  if (note) note.textContent = s < 1 ? `Scaled to ${Math.round(s * 100)}%.` : 'Actual size.';
+}
+
+// ---- tile tray: templates you drag onto the screen -------------------------
+const TEMPLATES = [
+  { group: 'Blank' },
+  { label: 'Key combo', icon: 'keyboard', color: 'graphite', style: 'solid', action: { type: 'keys', keys: ['F13'] } },
+  { label: 'Type text', icon: 'type', color: 'graphite', style: 'solid', action: { type: 'text', text: '', charDelayMs: 10 } },
+  { label: 'Media key', icon: 'playpause', color: 'graphite', style: 'solid', action: { type: 'media', key: 'PLAY_PAUSE' } },
+  { group: 'Presets' },
+  { label: 'Copy', icon: 'copy', color: 'azure', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'C'] } },
+  { label: 'Paste', icon: 'paste', color: 'azure', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'V'] } },
+  { label: 'Undo', icon: 'undo', color: 'graphite', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'Z'] } },
+  { label: 'Save', icon: 'save', color: 'violet', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'S'] } },
+  { label: 'Play / Pause', icon: 'playpause', color: 'volt', style: 'solid', action: { type: 'media', key: 'PLAY_PAUSE' } },
+  { label: 'Vol +', icon: 'volup', color: 'mint', style: 'solid', action: { type: 'media', key: 'VOLUME_UP' } },
+  { label: 'Vol −', icon: 'voldown', color: 'mint', style: 'solid', action: { type: 'media', key: 'VOLUME_DOWN' } },
+  { label: 'Mute', icon: 'mute', color: 'coral', style: 'soft', action: { type: 'media', key: 'MUTE' } },
+  { label: 'Lock', icon: 'lock', color: 'crimson', style: 'solid', action: { type: 'keys', keys: ['GUI', 'L'] } },
+  { label: 'Screen shot', icon: 'shot', color: 'sun', style: 'solid', action: { type: 'keys', keys: ['GUI', 'SHIFT', 'S'] } },
+];
+function renderTray() {
+  // One row of items per group; a group entry closes the previous row and opens a new one.
+  const items = TEMPLATES.map((tp, i) => {
+    if (tp.group) return `${i ? '</div>' : ''}<div class="tray-group">${tp.group}</div><div class="tray-items">`;
+    const c = tileColors(tp);
+    return `<button class="tray-item" data-template="${i}" title="Drag onto the screen"
+      style="background:${c.bg};color:${c.fg}"><span>${esc(tp.label)}</span><span style="color:${c.ic}">${svg(tp.icon)}</span></button>`;
+  }).join('') + '</div>';
+  return `<div class="tray" id="tray">
+    <div class="tray-head">Add tiles <span class="note">Drag onto the screen. Tiles start at 1×1.</span></div>
+    ${items}
+    <div class="tray-trash"><span><svg class="i" viewBox="0 0 20 20"><path d="M3 5h14M8 5V3h4v2M5 5l1 12h8l1-12"/></svg></span>Drop here to delete</div>
+  </div>`;
+}
+function newTile(tp, spot) {
+  return { id: 't' + Date.now().toString(36), ...spot, label: tp.label, icon: tp.icon, color: tp.color, style: tp.style,
+           action: JSON.parse(JSON.stringify(tp.action)) };
 }
 
 // ---- layout view -----------------------------------------------------------
@@ -377,7 +465,9 @@ function renderLayout() {
       </div>
     </div>
     ${renderPreview()}
-    <div class="hint"><span id="scale-note">Actual size.</span> Tap a tile to edit it, or <b>+</b> to add one. Drag to move (M9).</div>
+    <div class="hint"><span id="scale-note">Actual size.</span> Drag tiles to move them, drag the white corner to resize,
+      or drag a new tile in from the tray. Arrow keys nudge the selected tile.</div>
+    ${renderTray()}
     <details class="json"><summary>config.json for this page</summary><pre>${esc(JSON.stringify(page(), null, 2))}</pre></details>`;
   fitDevice();
 }
@@ -549,6 +639,131 @@ document.addEventListener('keydown', (e) => {
   const keys = [];
   if (e.ctrlKey) keys.push('CTRL'); if (e.shiftKey) keys.push('SHIFT'); if (e.altKey) keys.push('ALT'); if (e.metaKey) keys.push('GUI');
   tile().action.keys = [...keys, name]; state.recording = false; markDirty(); render();
+});
+
+// ---- drag and drop ------------------------------------------------------------
+// Three kinds of drag, all snapping to the grid of the current density:
+//   move   — pick up a tile on the screen; drop on the tray to delete it
+//   new    — drag a template out of the tray
+//   resize — drag the white corner handle of the selected tile (1×1 … 2×2)
+// A press that moves less than 5 px is a normal click (select / edit).
+let drag = null, suppressClick = false;
+
+function screenGeom() {
+  const scr = document.querySelector('.screen'), r = scr.getBoundingClientRect();
+  return { scr, r, s: r.width / 480, g: GRID[config.settings.density] };
+}
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+document.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0 || state.view !== 'layout') return;
+  const el = e.target.closest('.screen .tile, .tray-item, .resize');
+  if (!el) return;
+  drag = { el, x0: e.clientX, y0: e.clientY, started: false,
+           kind: el.dataset.resize ? 'resize' : el.dataset.template ? 'new' : 'move' };
+  if (drag.kind === 'move') drag.tile = page().tiles.find(t => t.id === el.dataset.tile);
+  if (drag.kind === 'resize') drag.tile = page().tiles.find(t => t.id === el.dataset.resize);
+  if (drag.kind === 'new') drag.tile = { ...TEMPLATES[+el.dataset.template], id: 'ghost', x: 0, y: 0, w: 1, h: 1 };
+});
+
+function startDrag(e) {
+  const { scr, r, s, g } = screenGeom();
+  drag.started = true; drag.spot = null;
+  document.body.classList.add('dragging');
+  drag.ind = document.createElement('div'); drag.ind.className = 'drop-ind'; drag.ind.hidden = true;
+  scr.appendChild(drag.ind);
+  if (drag.kind === 'resize') return;
+  // The ghost is the real tile, drawn at the preview's scale, following the pointer.
+  const t = drag.tile, size = tileRect({ ...t, x: 0, y: 0 }, g);
+  const box = drag.kind === 'move' ? drag.el.getBoundingClientRect() : null;
+  drag.off = box ? { x: drag.x0 - box.left, y: drag.y0 - box.top } : { x: size.width * s / 2, y: size.height * s / 2 };
+  drag.ghost = document.createElement('div');
+  drag.ghost.className = 'ghost ' + config.settings.density;
+  drag.ghost.innerHTML = tileHTML(t, { left: 0, top: 0, width: size.width, height: size.height });
+  document.body.appendChild(drag.ghost);
+  if (drag.kind === 'move') { drag.el.classList.add('drag-src'); $('tray').classList.add('trash'); }
+}
+
+document.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  if (!drag.started) {
+    if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 5) return;
+    startDrag(e);
+  }
+  e.preventDefault();
+  const { r, s, g } = screenGeom(), t = drag.tile;
+  const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  let spot = null;
+  if (drag.kind === 'resize') {
+    // The cell under the pointer sets the far corner; spans are limited to 1–2 cells.
+    const col = Math.floor(((e.clientX - r.left) / s - g.padX) / (g.w + g.gap));
+    const row = Math.floor(((e.clientY - r.top) / s - STATUS_H - g.padY) / (g.h + g.gap));
+    spot = { x: t.x, y: t.y, w: clamp(col - t.x + 1, 1, 2), h: clamp(row - t.y + 1, 1, 2) };
+  } else {
+    const gx = e.clientX - drag.off.x, gy = e.clientY - drag.off.y;
+    drag.ghost.style.transform = `translate(${gx}px, ${gy}px) scale(${s})`;
+    if (over) {
+      // Snap the ghost's top-left corner to the nearest cell, kept inside the grid.
+      const lx = (gx - r.left) / s, ly = (gy - r.top) / s;
+      spot = { w: t.w, h: t.h,
+               x: clamp(Math.round((lx - g.padX) / (g.w + g.gap)), 0, g.cols - t.w),
+               y: clamp(Math.round((ly - STATUS_H - g.padY) / (g.h + g.gap)), 0, g.rows - t.h) };
+    }
+    if (drag.kind === 'move') {
+      const tr = $('tray').getBoundingClientRect();
+      drag.overTrash = e.clientX >= tr.left && e.clientX <= tr.right && e.clientY >= tr.top && e.clientY <= tr.bottom;
+      $('tray').classList.toggle('hot', drag.overTrash);
+    }
+  }
+  drag.spot = spot;
+  drag.ind.hidden = !spot;
+  if (spot) {
+    drag.err = placeError(spot, page(), drag.kind === 'new' ? null : t);
+    drag.ind.classList.toggle('bad', !!drag.err);
+    drag.ghost?.classList.toggle('bad', !!drag.err);
+    drag.ind.style.cssText = px(tileRect(spot, g));
+  }
+});
+
+function endDrag(commit) {
+  const d = drag; drag = null;
+  if (!d || !d.started) return;
+  suppressClick = true; setTimeout(() => { suppressClick = false; }, 0);
+  document.body.classList.remove('dragging');
+  d.ghost?.remove(); d.ind?.remove();
+  if (commit) {
+    if (d.kind === 'move' && d.overTrash) {
+      page().tiles = page().tiles.filter(t => t !== d.tile);
+      if (state.tile === d.tile.id) state.tile = null;
+      markDirty(); toast(`Deleted “${d.tile.label}”`, 'var(--warn)');
+    } else if (d.spot && d.err) {
+      toast(`Can't place it there. ${d.err}`, 'var(--error)');
+    } else if (d.spot) {
+      if (d.kind === 'new') { const t = newTile(d.tile, d.spot); page().tiles.push(t); state.tile = t.id; }
+      else { Object.assign(d.tile, d.spot); state.tile = d.tile.id; }
+      markDirty();
+    }
+  }
+  render();
+}
+document.addEventListener('pointerup', () => endDrag(true));
+document.addEventListener('pointercancel', () => endDrag(false));
+// A drag ends with a click on whatever is under the pointer; swallow it.
+document.addEventListener('click', (e) => { if (suppressClick) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+
+// Keyboard: arrow keys move the focused tile one cell, if the new spot is free.
+document.addEventListener('keydown', (e) => {
+  if (state.recording) return;
+  const el = document.activeElement?.closest?.('.screen .tile');
+  const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (!el || !step) return;
+  e.preventDefault();
+  const t = page().tiles.find(o => o.id === el.dataset.tile);
+  const spot = { x: t.x + step[0], y: t.y + step[1], w: t.w, h: t.h };
+  const err = placeError(spot, page(), t);
+  if (err) return toast(err, 'var(--error)');
+  Object.assign(t, spot); state.tile = t.id; markDirty(); render();
+  document.querySelector(`.screen .tile[data-tile="${t.id}"]`)?.focus();
 });
 
 window.addEventListener('resize', fitDevice);

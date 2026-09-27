@@ -9,17 +9,25 @@ double-click it. Add `#settings` to the URL to open the settings view directly.
 
 ![Tile editor](../images/web-config-editor.png)
 
+![Dragging a preset from the tray onto the screen](../images/web-config-drag.png)
+
 | Settings view | Phone layout |
 |---|---|
 | ![Device settings](../images/web-config-settings.png) | <img src="../images/web-config-phone.png" width="260" alt="Phone layout: page tabs across the top, scaled preview, tile editor as a bottom sheet"> |
 
 **What works in the mockup:**
+- **Drag and drop on the preview:**
+  - drag a blank tile or a preset from the *Add tiles* tray onto the screen;
+  - drag a tile to move it, and drag the white corner handle of the selected tile to resize it;
+  - drag a tile back onto the tray to delete it;
+  - a dashed outline shows where the tile will land. It turns red if the spot is taken or off the
+    grid, and dropping there does nothing;
+  - arrow keys move the focused tile one cell.
 - Switch pages, add a page, rename the page (the name updates in the preview's status bar).
 - Tap a tile to edit its label, colour, style (solid / soft), size, icon and action. The preview
   updates as you go.
-- Tap an empty `+` cell to add a tile there. Delete a tile.
-- Size changes are checked against the grid rules from the config schema (must fit the grid,
-  no overlaps), and the error is shown under *Size*.
+- Tap an empty `+` cell to add a blank tile there, or delete a tile from the editor.
+- All placement follows the grid rules from the config schema (must fit the grid, no overlaps).
 - **Record combo:** press a key combination and it's converted to config key names (`CTRL`, `SHIFT`, `M`).
 - Switch density between Regular 5×3 and Compact 6×4.
 - *config.json for this page* shows the live JSON in the [config schema](../config-schema.md) format.
@@ -39,5 +47,6 @@ use. What changes is loading and saving through `GET`/`PUT /api/config`.
 - Fonts fall back to system fonts here. The real page will self-host Space Grotesk and JetBrains
   Mono subsets in `data/fonts/`.
 
-To refresh the screenshots after changing the mockup, render with the pre-installed Chromium in
-headless mode (desktop at 1360×860, phone at 390 px wide) and save them over the files in `docs/images/`.
+To refresh the screenshots after changing the mockup, render it in a browser (desktop at
+1360×860, phone at 390 px wide) and save the images over the files in `docs/images/`. The
+drag screenshot is taken while dragging the *Copy* preset over an empty cell on the *Code* page.
