@@ -67,6 +67,9 @@ static void build_status_bar(lv_obj_t* screen) {
     lv_obj_remove_style_all(spacer);
     lv_obj_set_height(spacer, 1);
     lv_obj_set_flex_grow(spacer, 1);
+    // Plain objects are clickable by default; this one must let taps through
+    // to the status bar, or the middle of the bar wouldn't open the menu.
+    lv_obj_set_clickable(spacer, false);
 
     s_wifi_icon = add_bar_label(s_status_bar, LV_SYMBOL_WIFI, link_color(s_wifi_state), &lv_font_montserrat_12);
     s_ble_icon = add_bar_label(s_status_bar, LV_SYMBOL_BLUETOOTH, link_color(s_ble_state), &lv_font_montserrat_12);

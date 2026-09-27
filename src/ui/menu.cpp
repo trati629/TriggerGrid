@@ -13,7 +13,7 @@
 #include "version.h"
 
 constexpr uint32_t SETUP_HOLD_MS = 3000;
-constexpr int32_t  QR_SIZE = 120;
+constexpr int32_t  QR_SIZE = 110;
 
 static lv_obj_t*   s_menu = nullptr;       // the open menu, or null
 static lv_obj_t*   s_wifi_text = nullptr;
@@ -115,7 +115,9 @@ static void close_menu() {
         s_refresh = nullptr;
     }
     if (s_menu) {
-        lv_obj_delete(s_menu);
+        // Async: this can run inside a click handler of one of the menu's own
+        // buttons, and LVGL must not delete an object while handling its event.
+        lv_obj_delete_async(s_menu);
         s_menu = nullptr;
     }
 }
@@ -160,8 +162,10 @@ static void open_menu() {
     lv_obj_set_style_bg_color(s_menu, theme::surface2(), 0);
     lv_obj_set_style_bg_opa(s_menu, LV_OPA_COVER, 0);
     lv_obj_set_style_pad_all(s_menu, 16, 0);
-    lv_obj_set_scrollable(s_menu, false);
     lv_obj_set_clickable(s_menu, true);   // don't let taps reach the tiles below
+    // Everything fits at 480×320; scrolling is only a fallback for long texts.
+    lv_obj_set_scroll_dir(s_menu, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(s_menu, LV_SCROLLBAR_MODE_OFF);
 
     lv_obj_t* title = add_text(s_menu, "Device", &space_grotesk_medium_20, theme::text());
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 0, 0);
@@ -169,13 +173,13 @@ static void open_menu() {
     lv_obj_align(close, LV_ALIGN_TOP_RIGHT, 0, -6);
 
     // Left: brightness, buttons, About. Right: Wi-Fi and the QR code.
-    lv_obj_t* left = add_column(s_menu, 230);
+    lv_obj_t* left = add_column(s_menu, 250);
     lv_obj_align(left, LV_ALIGN_TOP_LEFT, 0, 40);
 
     add_text(left, "Brightness", &space_grotesk_regular_12, theme::text_muted());
     lv_obj_t* slider = lv_slider_create(left);
     lv_obj_remove_style_all(slider);
-    lv_obj_set_size(slider, 210, 6);
+    lv_obj_set_size(slider, 230, 6);
     lv_obj_set_style_margin_ver(slider, 8, 0);
     lv_slider_set_range(slider, 10, 255);
     lv_slider_set_value(slider, power_level(), LV_ANIM_OFF);
@@ -199,16 +203,16 @@ static void open_menu() {
     lv_obj_set_style_pad_gap(row, 8, 0);
     add_button(row, "Forget Bluetooth", on_forget_ble);
     add_button(row, "Setup hotspot", on_setup_hotspot);
-    add_button(row, "Reboot", on_reboot);
+    add_button(row, "Restart", on_reboot);
 
     s_about_text = add_text(left, "", &space_grotesk_regular_12, theme::text_muted());
 
-    lv_obj_t* right = add_column(s_menu, 200);
+    lv_obj_t* right = add_column(s_menu, 180);
     lv_obj_align(right, LV_ALIGN_TOP_RIGHT, 0, 40);
     add_text(right, "Wi-Fi", &space_grotesk_regular_12, theme::text_muted());
     s_wifi_text = add_text(right, "", &space_grotesk_regular_14, theme::text());
     lv_label_set_long_mode(s_wifi_text, LV_LABEL_LONG_MODE_WRAP);
-    lv_obj_set_width(s_wifi_text, 200);
+    lv_obj_set_width(s_wifi_text, 180);
 
     s_qr = lv_qrcode_create(right);
     lv_qrcode_set_size(s_qr, QR_SIZE);

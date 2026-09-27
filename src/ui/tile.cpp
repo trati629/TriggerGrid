@@ -36,7 +36,6 @@ lv_obj_t* tile_create(lv_obj_t* page, const PadTile& t, const theme::Grid& g) {
     lv_obj_set_style_bg_color(tile, bg, 0);
     lv_obj_set_style_bg_opa(tile, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(tile, g.radius, 0);
-    lv_obj_set_style_clip_corner(tile, true, 0);   // rounds the soft-style bar too
 
     // Press: 20% darker and 96% size. transform_width/height shrink what is
     // drawn without an extra render layer, which a real scale would need.
@@ -74,6 +73,10 @@ lv_obj_t* tile_create(lv_obj_t* page, const PadTile& t, const theme::Grid& g) {
     }
 
     if (t.bar) {
+        // Clip the children to the rounded corners so the bar follows them.
+        // Only here: clipping draws the tile through an extra layer.
+        lv_obj_set_style_clip_corner(tile, true, 0);
+
         lv_obj_t* bar = lv_obj_create(tile);
         lv_obj_remove_style_all(bar);
         lv_obj_set_size(bar, w, 3);
