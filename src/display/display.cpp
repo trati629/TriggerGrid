@@ -9,6 +9,7 @@
 
 static Arduino_DataBus* s_bus = nullptr;
 static Arduino_GFX*     s_gfx = nullptr;
+static uint8_t          s_brightness = 0;
 
 bool display_init() {
     s_bus = new Arduino_ESP32QSPI(PIN_LCD_CS, PIN_LCD_SCK,
@@ -47,6 +48,11 @@ void display_push_frame(const uint16_t* frame) {
 void display_set_brightness(uint8_t level) {
     // Core 3.x: analogWrite() sets up LEDC itself; ledcSetup() no longer exists.
     analogWrite(PIN_LCD_BL, level);
+    s_brightness = level;
+}
+
+uint8_t display_get_brightness() {
+    return s_brightness;
 }
 
 void display_ramp_backlight(uint8_t level, uint32_t duration_ms) {

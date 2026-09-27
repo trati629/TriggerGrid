@@ -54,7 +54,8 @@ double-click it. Add `#settings` to the URL to open the settings view directly.
 **What's faked:** nothing is sent to a device. *Save*, *Try it* and the Wi-Fi, Bluetooth and backup
 buttons only show a message. Status values (IP, signal, heap) are placeholders.
 
-**How it maps to the real page:** the real `web/index.html` (M8/M9) can start from this file. The
+**How it maps to the real page:** the real page (`web/index.html`, `app.js`, `editor.js`) was built
+from this file in M8/M9. The
 data model, grid maths, swatch table and key-name mapping are already the ones the firmware will
 use, and so is the compiler (the *compiler* section of the script moves to `web/lib/` in M6). What
 changes is loading and saving through `GET`/`PUT /api/config`.

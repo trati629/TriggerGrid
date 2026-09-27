@@ -71,7 +71,7 @@ them. It doesn't need to know what a key *means* to do that.
 |-----------------|-----------------------------------------------------|-----|
 | Toolchain       | PlatformIO in VS Code, pioarduino (Arduino core 3.x) | Needed by GFX Library ≥ 1.6. Arduino API is easy to follow in blog posts |
 | Display driver  | Arduino_GFX `Arduino_AXS15231B`, type1 init          | Only known-good path for this panel (see hardware doc §P1) |
-| UI              | LVGL 9, landscape 480×320, full-frame render + software transpose | Hardware and LVGL rotation are broken on this board; Solution 4 is confirmed working |
+| UI              | LVGL 9, landscape 480×320, partial render + software transpose into a full frame | Hardware and LVGL rotation are broken on this board; Solution 4 is confirmed working. Only changed areas are redrawn; the panel always gets whole frames (§P9) |
 | Touch           | Own I2C driver for AXS15231B                         | No library handles the unlock command and multi-pulse INT |
 | Bluetooth       | NimBLE-Arduino 2.x, own HID keyboard + consumer report map | Smaller and more reliable than Bluedroid; older `BleKeyboard` libraries break on core 3.x |
 | Web server      | Arduino core `WebServer` (synchronous) in its **own task on core 0** | Ships with the core; one connection at a time keeps RAM predictable; runs off the UI core so page loads never stall the screen |
@@ -99,7 +99,9 @@ Each module is a folder under `src/` with a small header that exposes a C-style 
 | `actions`  | `src/actions/` | Runs a tile's pre-compiled action: one chord, one consumer key, or a keystroke list with a delay |
 | `hid`      | `src/hid/`     | NimBLE HID device: keyboard + consumer reports, pairing, connection state |
 | `net`      | `src/net/`     | Wi-Fi STA with AP fallback, mDNS, credentials in NVS |
-| `web`      | `src/web/`     | Web task: serves the embedded app, streams `config.json`, small JSON API |
+| `web`      | `src/web/`     | Web task: serves the embedded app, streams `config.json`, small JSON API, firmware updates |
+| `power`    | `src/power/`   | Backlight level, idle dimming and screen-off; a touch on a dark screen only wakes it |
+| `diag`     | `src/diag/`    | Bring-up test screens (corners, touch), kept for debugging |
 
 ## Threads and ownership
 
@@ -109,7 +111,8 @@ LVGL is **not thread-safe**. The rule:
 
 | Task              | Core | Stack | Owns                                  | Talks to others via |
 |-------------------|------|-------|---------------------------------------|---------------------|
-| `loop()`          | 1    | 8 KB  | LVGL, touch, reading `config.json`    | Pushes actions onto `action_queue` |
+| `loop()`          | 1    | 8 KB  | LVGL, reading `config.json`    | Pushes actions onto `action_queue` |
+| `touch` task      | 0    | 3 KB  | I2C reads of the touch chip           | Woken by the INT pin; keeps the latest point for LVGL's input callback |
 | `web` task        | 0    | 8 KB  | `WebServer`, writing `config.json`    | Sets `config_dirty`; pushes "Try it" actions onto `action_queue` |
 | `actions` task    | 0    | 4 KB  | Running action steps (with delays)    | Reads `action_queue`, calls `hid_*` |
 | NimBLE host       | 0    | —     | BLE stack (created by NimBLE)         | Sets connection state atomically |
@@ -119,6 +122,9 @@ LVGL is **not thread-safe**. The rule:
   `config_dirty` flag. On its next pass, `loop()` re-reads the `pad` section and rebuilds the screens.
 - **Only the web task writes `config.json`,** and it writes a temporary file first, then renames it
   (see *Saving*). The UI only reads the file after the rename, so it never sees a half-written file.
+- **Touch is read in its own task.** The chip's data is only valid for a moment after each INT
+  pulse, and a frame flush in `loop()` takes tens of milliseconds, so waiting for `loop()` would
+  miss it.
 - Typing a long string takes time (one key down/up per character at 8–15 ms). This happens in
   the `actions` task so neither the UI nor the web page freezes.
 - The web task sits at a lower priority than the Wi-Fi and BLE stacks, so a page load can't delay
@@ -224,9 +230,11 @@ Responses are small. Only `/api/status` and `/api/wifi/scan` build JSON on the d
 | POST   | `/api/ble/forget` | Clears bonds so the pad can pair with another computer | — |
 | POST   | `/api/pin`        | `{ "old", "new" }`: set or change the web PIN | NVS write |
 | POST   | `/api/reboot`     | — | — |
+| POST   | `/api/ota`        | A firmware `.bin` as the body. Written to the other app partition, verified, then the pad restarts into it | Flash write |
 
-Request limits, checked from `Content-Length` before reading the body: 32 KB for
-`/api/config`, 4 KB for everything else. Anything larger gets a `413` without being read.
+Request limits, checked from `Content-Length`: 32 KB for `/api/config`, 4 KB for everything
+else. Anything larger gets a `413`. The core `WebServer` still reads the body off the socket, but
+the web task drops it instead of storing it.
 
 ## Security
 
@@ -247,15 +255,15 @@ some guarding:
 
 | Item                                     | Where | Size     |
 |------------------------------------------|-------|----------|
-| LVGL draw buffer 480×320×2               | PSRAM | 300 KB   |
-| Transpose buffer 320×480×2               | PSRAM | 300 KB   |
-| LVGL heap (`LV_MEM_SIZE`)                | SRAM  | 96 KB    |
+| LVGL draw buffer 480×40×2 (strips)       | SRAM  | 38 KB    |
+| Panel frame 320×480×2 (transposed)       | PSRAM | 300 KB   |
+| LVGL heap (`LV_MEM_SIZE`, widgets and styles) | PSRAM | 1 MB  |
 | NimBLE host                              | SRAM  | ~50 KB   |
 | Wi-Fi + lwIP                             | SRAM  | ~60 KB   |
 | Web task stack + 1 KB stream buffer      | SRAM  | 9 KB     |
 | One TCP connection (lwIP buffers)        | SRAM  | ~6 KB    |
 | Parsing `pad` (ArduinoJson, filtered)    | PSRAM | < 24 KB, freed after load |
-| `Pad` struct (up to 12 × 24 tiles)       | PSRAM | < 40 KB  |
+| `Pad` struct (up to 12 × 24 tiles)       | PSRAM | ~22 KB   |
 | Embedded web app                         | Flash | ~60 KB   |
 
 The web path adds about 15 KB of SRAM while serving. The thing to watch is SRAM

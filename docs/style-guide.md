@@ -166,9 +166,8 @@ the device menu (brightness, Wi-Fi info with QR code, re-pair Bluetooth, about).
 | Web    | UI text         | Space Grotesk                 | 14–15 / 400–500 |
 | Web    | Key combos      | JetBrains Mono, in keycaps    | 13 / 500      |
 
-¹ Convert with `lv_font_conv` (or the LVGL online font converter) at 4 bpp, and include only
-the glyphs you need: ASCII plus `LV_SYMBOL_*`. Until then the built-in Montserrat is used
-(enabled in `include/lv_conf.h`).
+¹ Converted by `node tools/make_fonts.js` (`lv_font_conv`, 4 bpp) into `src/ui/fonts/`: Latin-1
+plus – — ‘ ’ “ ” • … − €. The web editor warns about label characters outside that set.
 
 Label rules: up to 2 lines. Labels are left-aligned at the tile's top-left with 10 px padding, and
 the icon sits at the bottom-left. A 1×1 `compact` tile shows either the icon or the label, not
@@ -184,9 +183,12 @@ both. Text that doesn't fit is truncated with `…`, never scaled down.
 
 ## Icons
 
-- Device: start with the built-in `LV_SYMBOL_*` set (play, pause, volume, copy, etc.). Later,
-  a small custom icon font made from one open set (e.g. Lucide or Tabler), converted like the text font.
-- Icons are 20 px (`regular`) or 18 px (`compact`) and take the label colour.
+- One icon set, defined once as 20×20 stroke SVGs in `web/lib/icons.js`. The web editor draws the
+  SVGs; `tools/make_icons.js` renders the same SVGs into A8 images for the pad
+  (`src/ui/icon_images.c`), so both look identical. Add icons only at the end of the list: the pad
+  receives an icon as its position.
+- Icons are 20 px (`regular`) or 18 px (`compact`) and take the tile's accent colour.
+- The status bar's Wi-Fi and Bluetooth icons use LVGL's built-in `LV_SYMBOL_*` glyphs.
 - The web editor uses the same icon set as SVG, so the preview matches the device.
 
 ## Web config page
