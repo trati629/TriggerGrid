@@ -26,8 +26,9 @@ This repo is also the reference project for a blog series about programming this
 **VS Code, PlatformIO, LVGL and Claude**. Each milestone in the roadmap is tagged so you can
 check out the code as it was at any step.
 
-> **Status:** M0 and M1 are done and checked on the board. M2–M10 are written and build, but haven't
-> been checked on the board yet. See the [roadmap](docs/roadmap.md).
+> **Status:** M0–M9 are done and checked on the board: it renders, swipes, types over Bluetooth and
+> is configured from the web page. M10 (polish) is written and waiting for its board check. See the
+> [roadmap](docs/roadmap.md).
 
 ## Hardware
 

@@ -25,7 +25,7 @@ Status key: ✅ done · 🧪 written and builds, not yet checked on the board ·
 - Learned: drawing with `fillRect()` straight to the panel put every band at the top. The pattern is
   now drawn into a PSRAM frame and pushed whole with `display_push_frame()` (hardware doc §P9).
 
-## 🧪 M2 — LVGL in landscape
+## ✅ M2 — LVGL in landscape
 
 - `src/lvgl_glue/`: two 480×320×2 PSRAM buffers, both `memset` to 0 (§P5).
 - `lv_display_create(480, 320)`, `ROTATION_0`, transposing flush (§Solution 4). Started as
@@ -38,7 +38,7 @@ Status key: ✅ done · 🧪 written and builds, not yet checked on the board ·
 - **Done when:** the labels are in the right corners with the USB port where the enclosure puts it,
   and a full frame takes < 40 ms.
 
-## 🧪 M3 — Touch
+## ✅ M3 — Touch
 
 - `src/touch/`: I2C at 400 kHz, the 8-byte unlock + full STOP before every read, INT on GPIO 3 sets a
   flag, 80 ms release timeout.
@@ -49,7 +49,7 @@ Status key: ✅ done · 🧪 written and builds, not yet checked on the board ·
 - Test screen: a dot follows your finger, and there's a button in each corner.
 - **Done when:** all four corner buttons respond, and a single tap fires `LV_EVENT_CLICKED` exactly once.
 
-## 🧪 M4 — Theme and bento grid (hard-coded)
+## ✅ M4 — Theme and bento grid (hard-coded)
 
 - `src/ui/theme.h` with the interface tokens and grid numbers from the [style guide](style-guide.md).
   No swatch table: tiles get final RGB values, as they will from the compiled `pad`.
@@ -64,7 +64,7 @@ Status key: ✅ done · 🧪 written and builds, not yet checked on the board ·
 - **Done when:** swiping is smooth, the tiles match the style guide numbers, and every swatch is
   checked on the panel (RGB565).
 
-## 🧪 M5 — Bluetooth keyboard
+## ✅ M5 — Bluetooth keyboard
 
 - `src/hid/`: NimBLE-Arduino 2.x HID device with a keyboard report and a consumer-control report,
   battery service (fixed 100%), bonding, and auto-reconnect.
@@ -91,7 +91,7 @@ Status key: ✅ done · 🧪 written and builds, not yet checked on the board ·
   core 0; each job carries its own copy of the keystroke list). The built-in layout already uses real
   codes, so every tile is live.
 
-## 🧪 M6 — Layout compiler and pad reader
+## ✅ M6 — Layout compiler and pad reader
 
 This milestone has two halves. The browser half needs no hardware.
 
@@ -116,7 +116,7 @@ This milestone has two halves. The browser half needs no hardware.
   with `uploadfs` changes the pad's layout; and a corrupted or oversized file shows a status-bar
   warning instead of crashing.
 
-## 🧪 M7 — Wi-Fi with AP fallback
+## ✅ M7 — Wi-Fi with AP fallback
 
 - `src/net/`: STA from NVS credentials with a 10 s timeout, falling back to a WPA2 AP
   `TriggerGrid-XXXX`; mDNS `triggergrid.local`.
@@ -126,7 +126,7 @@ This milestone has two halves. The browser half needs no hardware.
   NVS, mDNS, async scan for M8) and `src/ui/menu.cpp` (tap the status bar; hold it 3 s for the
   hotspot). Brightness from the menu lasts until the next reboot or layout save.
 
-## 🧪 M8 — Web server and API
+## ✅ M8 — Web server and API
 
 - `tools/embed_web.py`: PlatformIO pre-build script that gzips `web/` into
   `src/web/web_assets.h` (see [architecture.md](architecture.md#web-app-delivery)).
@@ -145,7 +145,7 @@ This milestone has two halves. The browser half needs no hardware.
   backup, and a `config.json` view that compiles and saves. Oversized bodies are read and dropped
   rather than refused before reading (the core `WebServer` always reads the body).
 
-## 🧪 M9 — Visual web editor
+## ✅ M9 — Visual web editor
 
 Design reference: [mockups/web-config.html](mockups/web-config.html) (see [mockups/README.md](mockups/README.md)).
 All of this is browser code: no firmware changes expected.
@@ -189,25 +189,19 @@ All of this is browser code: no firmware changes expected.
 ## Open questions
 
 - Is 64 px (compact) comfortable to hit, or should compact be 6×3? Decide in M4 on the real panel.
-- Is full-frame render + transpose fast enough for smooth swiping? No: on the board it felt slow
-  and choppy. Now LVGL renders only changed areas into internal RAM and the flush transposes just
-  those; the panel still gets whole frames. Check the `frame:` line on serial: if the push dominates,
-  next steps are a faster QSPI clock or pushing from the other core.
+- ~~Is full-frame render + transpose fast enough for smooth swiping?~~ No: it felt slow and choppy.
+  Rendering only changed areas into internal RAM (flush transposes them into the full PSRAM frame,
+  panel still gets whole frames) fixed it on the board. If it ever needs more, the next steps are a
+  faster QSPI clock or pushing frames from the other core.
 - Do all target OSes accept the consumer-control report with the keyboard in one HID device? M5.
 
 ## Next steps (right now)
 
-M2–M10 are written and build, but none of it has run on the board yet. Check them in order, since
-each builds on the one before:
+M2–M9 were checked on the board on 2026-09-27: rendering, touch, swiping pages, Bluetooth typing,
+Wi-Fi (hotspot and home network) and editing a layout from the web page all work.
 
-1. **M2:** corner labels in the right corners (else flip `SCREEN_ROTATE_CW` in `board_pins.h`), and
-   the frame time on serial.
-2. **M3:** the touch test is no longer on screen (M4 replaced it). To check touch on its own, call
-   `diag_show_touch()` instead of `show_layout()` in `setup()`.
-3. **M4:** swipe between the three pages; check every swatch on the panel.
-4. **M5:** pair from a computer ("TriggerGrid"), then try Copy, Play/Pause and Email sig.
-5. **M6:** `node tools/make_default_config.js`, edit a label in `data/config.json`, `pio run -t uploadfs`.
-6. **M7:** a fresh pad starts the hotspot; the menu shows its QR code.
-7. **M8/M9:** join the hotspot, open http://192.168.4.1, set Wi-Fi, then edit and save a tile.
-8. **M10:** let the pad sit for the dim time; upload `.pio/build/guition-jc3248w535/firmware.bin`
-   from the page.
+1. **M10:** let the pad sit for the dim time (2 minutes by default) and check it dims, then goes dark
+   5 minutes later and wakes on a tap without pressing a tile. Then upload
+   `.pio/build/guition-jc3248w535/firmware.bin` from the web page's *Update firmware*.
+2. Merge PRs #2–#10 in order, then tag each milestone and `v1.0`.
+3. Photos of the pad for the README.
