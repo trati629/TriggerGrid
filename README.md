@@ -20,7 +20,7 @@ This repo is also the reference project for a blog series about programming this
 **VS Code, PlatformIO, LVGL and Claude**. Each milestone in the roadmap is tagged so you can
 check out the code as it was at any step.
 
-> **Status:** early. Milestone M0 (project skeleton) is done. See the [roadmap](docs/roadmap.md).
+> **Status:** early. Milestones M0 (project skeleton) and M1 (display bring-up) are done. See the [roadmap](docs/roadmap.md).
 
 ## Hardware
 
@@ -47,10 +47,11 @@ touch code.
 4. PlatformIO sidebar → *guition-jc3248w535* → **Upload and Monitor**.
 5. You should see:
    ```
-   TriggerGrid skeleton
+   TriggerGrid
      Chip:  ESP32-S3 rev 0, 2 cores @ 240 MHz
      Flash: 16384 KB
      PSRAM: 8192 KB (ok)
+   display: test pattern drawn
    ```
 
 From the command line: `pio run -t upload && pio device monitor`.

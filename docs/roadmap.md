@@ -14,7 +14,7 @@ Status key: ✅ done · 🔜 next · ⬜ planned
 - `include/board_pins.h`, `include/lv_conf.h`, and a `src/main.cpp` that prints chip, flash and PSRAM info.
 - **Done when:** `pio run` builds; after flashing, the serial monitor shows `PSRAM: 8192 KB (ok)`.
 
-## 🔜 M1 — Display bring-up
+## ✅ M1 — Display bring-up
 
 - `src/display/`: QSPI bus, `Arduino_AXS15231B` with **`axs15231b_320480_type1_init_operations`**,
   RST not passed, rotation 0.
@@ -22,8 +22,10 @@ Status key: ✅ done · 🔜 next · ⬜ planned
 - Draw a test pattern: colour bars plus a rectangle 1 px in from each edge, to prove the geometry.
 - **Done when:** the colour bars fill the panel and all four edges of the rectangle are visible.
 - Watch for: blank screen or a dashed line means the wrong init sequence (hardware doc §P1).
+- Learned: drawing with `fillRect()` straight to the panel put every band at the top. The pattern is
+  now drawn into a PSRAM frame and pushed whole with `display_push_frame()` (hardware doc §P9).
 
-## ⬜ M2 — LVGL in landscape
+## 🔜 M2 — LVGL in landscape
 
 - `src/lvgl_glue/`: two 480×320×2 PSRAM buffers, both `memset` to 0 (§P5).
 - `lv_display_create(480, 320)`, `ROTATION_0`, `RENDER_MODE_FULL`, transposing flush (§Solution 4).
@@ -125,7 +127,7 @@ Status key: ✅ done · 🔜 next · ⬜ planned
 
 ## Next steps (right now)
 
-1. Open the folder in VS Code with the PlatformIO extension installed (VS Code will suggest it).
-2. Connect the board by USB-C and run **Upload and Monitor** for M0. Confirm PSRAM shows 8192 KB.
-3. Start M1: create `src/display/display.h/.cpp` from the init code in
-   [hardware/jc3248w535.md](hardware/jc3248w535.md) and call `display_init()` from `setup()`.
+1. Note which case edge the white band of the M1 test pattern sits on, relative to the USB port.
+   That fixes the transpose direction (90° CW or CCW) for M2.
+2. Start M2: create `src/lvgl_glue/` with the two PSRAM buffers and the transposing flush from
+   [hardware/jc3248w535.md](hardware/jc3248w535.md) §Solution 4, pushing through `display_push_frame()`.
