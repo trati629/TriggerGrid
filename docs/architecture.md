@@ -71,7 +71,7 @@ them. It doesn't need to know what a key *means* to do that.
 |-----------------|-----------------------------------------------------|-----|
 | Toolchain       | PlatformIO in VS Code, pioarduino (Arduino core 3.x) | Needed by GFX Library ≥ 1.6. Arduino API is easy to follow in blog posts |
 | Display driver  | Arduino_GFX `Arduino_AXS15231B`, type1 init          | Only known-good path for this panel (see hardware doc §P1) |
-| UI              | LVGL 9, landscape 480×320, full-frame render + software transpose | Hardware and LVGL rotation are broken on this board; Solution 4 is confirmed working |
+| UI              | LVGL 9, landscape 480×320, partial render + software transpose into a full frame | Hardware and LVGL rotation are broken on this board; Solution 4 is confirmed working. Only changed areas are redrawn; the panel always gets whole frames (§P9) |
 | Touch           | Own I2C driver for AXS15231B                         | No library handles the unlock command and multi-pulse INT |
 | Bluetooth       | NimBLE-Arduino 2.x, own HID keyboard + consumer report map | Smaller and more reliable than Bluedroid; older `BleKeyboard` libraries break on core 3.x |
 | Web server      | Arduino core `WebServer` (synchronous) in its **own task on core 0** | Ships with the core; one connection at a time keeps RAM predictable; runs off the UI core so page loads never stall the screen |
@@ -255,8 +255,8 @@ some guarding:
 
 | Item                                     | Where | Size     |
 |------------------------------------------|-------|----------|
-| LVGL draw buffer 480×320×2               | PSRAM | 300 KB   |
-| Transpose buffer 320×480×2               | PSRAM | 300 KB   |
+| LVGL draw buffer 480×40×2 (strips)       | SRAM  | 38 KB    |
+| Panel frame 320×480×2 (transposed)       | PSRAM | 300 KB   |
 | LVGL heap (`LV_MEM_SIZE`, widgets and styles) | PSRAM | 1 MB  |
 | NimBLE host                              | SRAM  | ~50 KB   |
 | Wi-Fi + lwIP                             | SRAM  | ~60 KB   |

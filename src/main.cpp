@@ -153,8 +153,8 @@ void loop() {
     if (millis() - last_stats >= STATS_PERIOD_MS) {
         last_stats = millis();
         FlushStats s = lvgl_glue_flush_stats();
-        Serial.printf("frame: transpose %lu us + push %lu us (%lu frames) | heap %lu, PSRAM %lu\n",
-                      (unsigned long)s.transpose_us, (unsigned long)s.push_us,
+        Serial.printf("frame: %lu us (transpose %lu + push %lu, rest is rendering) (%lu frames) | heap %lu, PSRAM %lu\n",
+                      (unsigned long)s.refresh_us, (unsigned long)s.transpose_us, (unsigned long)s.push_us,
                       (unsigned long)s.frames, (unsigned long)ESP.getFreeHeap(),
                       (unsigned long)ESP.getFreePsram());
     }

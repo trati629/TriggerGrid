@@ -28,7 +28,8 @@ Status key: ✅ done · 🧪 written and builds, not yet checked on the board ·
 ## 🧪 M2 — LVGL in landscape
 
 - `src/lvgl_glue/`: two 480×320×2 PSRAM buffers, both `memset` to 0 (§P5).
-- `lv_display_create(480, 320)`, `ROTATION_0`, `RENDER_MODE_FULL`, transposing flush (§Solution 4).
+- `lv_display_create(480, 320)`, `ROTATION_0`, transposing flush (§Solution 4). Started as
+  `RENDER_MODE_FULL`; now `PARTIAL` into internal RAM for speed (see Open questions).
 - Tick with `lv_tick_inc()` in `loop()` (§P8).
 - Show a label in each corner ("TL", "TR", "BL", "BR") and one in the centre.
 - Log flush time to serial: transpose time + push time.
@@ -188,8 +189,10 @@ All of this is browser code: no firmware changes expected.
 ## Open questions
 
 - Is 64 px (compact) comfortable to hit, or should compact be 6×3? Decide in M4 on the real panel.
-- Is full-frame render + transpose fast enough for smooth swiping? If not, consider partial render
-  with per-area transpose in M4.
+- Is full-frame render + transpose fast enough for smooth swiping? No: on the board it felt slow
+  and choppy. Now LVGL renders only changed areas into internal RAM and the flush transposes just
+  those; the panel still gets whole frames. Check the `frame:` line on serial: if the push dominates,
+  next steps are a faster QSPI clock or pushing from the other core.
 - Do all target OSes accept the consumer-control report with the keyboard in one HID device? M5.
 
 ## Next steps (right now)

@@ -44,8 +44,9 @@ the user should look for on the device and on serial.
   `GFX_NOT_DEFINED`.
 - Never use MADCTL rotation or `lv_display_set_rotation(90/270)`. Landscape = LVGL 480×320 at
   `ROTATION_0` + transpose in the flush callback.
-- Only full-frame writes to the panel (`display_push_frame()`, LVGL `RENDER_MODE_FULL`). Partial
-  GFX draws such as `fillRect` all land at the top (hardware doc §P9).
+- Only full-frame writes to the panel (`display_push_frame()`). Partial GFX draws such as
+  `fillRect` all land at the top (hardware doc §P9). LVGL may render partial areas (it does, into
+  internal RAM); the flush rotates them into a full PSRAM frame and pushes that whole frame.
 - `memset` every `ps_malloc` buffer.
 - Drive LVGL ticks manually with `lv_tick_inc()` in `loop()`.
 - Touch: 8-byte unlock with `endTransmission()` (full STOP) before every read.
