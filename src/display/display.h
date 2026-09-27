@@ -29,6 +29,7 @@ void display_push_frame(const uint16_t* frame);
 
 // Backlight level, 0 = off, 255 = full.
 void display_set_brightness(uint8_t level);
+uint8_t display_get_brightness();
 
 // Fade the backlight from off up to `level` over `duration_ms`.
 // Blocking: call from setup() only.

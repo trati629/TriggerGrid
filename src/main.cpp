@@ -1,8 +1,8 @@
 // TriggerGrid — touchscreen BLE macro pad for the Guition JC3248W535.
 //
 // Entry point. Each module listed in docs/architecture.md is brought up in
-// order by the milestones in docs/roadmap.md. M6: the layout comes from
-// /config.json, compiled by the browser.
+// order by the milestones in docs/roadmap.md. M7: Wi-Fi with a setup
+// hotspot, and the device menu.
 
 #include <Arduino.h>
 #include "actions/actions.h"
@@ -11,8 +11,11 @@
 #include "display/display.h"
 #include "hid/hid.h"
 #include "lvgl_glue/lvgl_glue.h"
+#include "net/net.h"
 #include "touch/touch.h"
+#include "ui/menu.h"
 #include "ui/ui.h"
+#include "version.h"
 
 constexpr uint32_t BACKLIGHT_RAMP_MS = 1000;
 constexpr uint32_t STATS_PERIOD_MS = 5000;
@@ -39,6 +42,24 @@ static void show_layout() {
     const Pad& pad = config_pad();
     ui_build(pad);
     ui_set_warning(config_warning() ? "Layout error: built-in used" : nullptr);
+    menu_attach(ui_status_bar());
+}
+
+// Show the Wi-Fi state in the status bar whenever it changes.
+static void update_wifi_status() {
+    static LinkState shown = LinkState::Off;
+    static bool first = true;
+    LinkState state;
+    switch (net_mode()) {
+        case NetMode::Station:     state = net_connected() ? LinkState::Ok : LinkState::Failed; break;
+        case NetMode::AccessPoint: state = LinkState::Waiting; break;   // setup hotspot
+        default:                   state = LinkState::Waiting; break;   // joining
+    }
+    if (first || state != shown) {
+        ui_set_wifi_state(state);
+        shown = state;
+        first = false;
+    }
 }
 
 // Show the Bluetooth state in the status bar whenever it changes.
@@ -61,7 +82,7 @@ void setup() {
     delay(500);   // give USB CDC a moment to enumerate
 
     Serial.println();
-    Serial.println("TriggerGrid");
+    Serial.printf("TriggerGrid %s\n", FW_VERSION);
     Serial.printf("  Chip:  %s rev %d, %d cores @ %lu MHz\n",
                   ESP.getChipModel(), ESP.getChipRevision(),
                   ESP.getChipCores(), (unsigned long)ESP.getCpuFreqMHz());
@@ -98,6 +119,8 @@ void setup() {
     }
     Serial.printf("ble: advertising as \"%s\"\n", pad.name);
 
+    net_begin(pad.name);
+
     lvgl_glue_update();   // render the first frame before the backlight comes up
     display_ramp_backlight(pad.brightness, BACKLIGHT_RAMP_MS);
     Serial.printf("ui: %u pages\n", pad.page_count);
@@ -105,7 +128,9 @@ void setup() {
 
 void loop() {
     lvgl_glue_update();
+    net_update();
     update_ble_status();
+    update_wifi_status();
 
     // A new config.json was saved: reload it and rebuild the screens at once
     // (the UI points into the Pad, see config_reload()).

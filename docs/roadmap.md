@@ -115,12 +115,15 @@ This milestone has two halves. The browser half needs no hardware.
   with `uploadfs` changes the pad's layout; and a corrupted or oversized file shows a status-bar
   warning instead of crashing.
 
-## ⬜ M7 — Wi-Fi with AP fallback
+## 🧪 M7 — Wi-Fi with AP fallback
 
 - `src/net/`: STA from NVS credentials with a 10 s timeout, falling back to a WPA2 AP
   `TriggerGrid-XXXX`; mDNS `triggergrid.local`.
 - Device menu (tap status bar): brightness, Wi-Fi info with QR code, Forget Bluetooth, About.
 - **Done when:** a fresh device starts in AP mode, and a phone can join by scanning the QR code.
+- Built: `src/net/` (non-blocking join with a 10 s timeout, WPA2 hotspot with a random password in
+  NVS, mDNS, async scan for M8) and `src/ui/menu.cpp` (tap the status bar; hold it 3 s for the
+  hotspot). Brightness from the menu lasts until the next reboot or layout save.
 
 ## ⬜ M8 — Web server and API
 

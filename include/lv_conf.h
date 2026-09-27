@@ -32,6 +32,8 @@
 #define LV_FONT_MONTSERRAT_20 1
 #define LV_FONT_DEFAULT &lv_font_montserrat_14
 
+#define LV_USE_QRCODE 1              // Wi-Fi hotspot QR code in the device menu
+
 #define LV_USE_LOG 0
 
 #endif // LV_CONF_H
