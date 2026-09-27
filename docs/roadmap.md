@@ -4,7 +4,7 @@ The project is built in small milestones. Each one ends with something you can s
 device, so each can be a blog post and a git tag (`m1-display`, `m2-lvgl`, …) for readers to
 check out.
 
-Status key: ✅ done · 🔜 next · ⬜ planned
+Status key: ✅ done · 🧪 written and builds, not yet checked on the board · 🔜 next · ⬜ planned
 
 ---
 
@@ -25,13 +25,15 @@ Status key: ✅ done · 🔜 next · ⬜ planned
 - Learned: drawing with `fillRect()` straight to the panel put every band at the top. The pattern is
   now drawn into a PSRAM frame and pushed whole with `display_push_frame()` (hardware doc §P9).
 
-## 🔜 M2 — LVGL in landscape
+## 🧪 M2 — LVGL in landscape
 
 - `src/lvgl_glue/`: two 480×320×2 PSRAM buffers, both `memset` to 0 (§P5).
 - `lv_display_create(480, 320)`, `ROTATION_0`, `RENDER_MODE_FULL`, transposing flush (§Solution 4).
 - Tick with `lv_tick_inc()` in `loop()` (§P8).
 - Show a label in each corner ("TL", "TR", "BL", "BR") and one in the centre.
 - Log flush time to serial: transpose time + push time.
+- The rotation direction is `SCREEN_ROTATE_CW` in `board_pins.h`, shared with touch. If the corner
+  labels are upside down, flip it.
 - **Done when:** the labels are in the right corners with the USB port where the enclosure puts it,
   and a full frame takes < 40 ms.
 

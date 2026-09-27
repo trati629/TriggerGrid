@@ -28,3 +28,10 @@ constexpr int16_t PANEL_W = 320;   // physical
 constexpr int16_t PANEL_H = 480;   // physical
 constexpr int16_t SCREEN_W = 480;  // logical (LVGL, touch, UI layout)
 constexpr int16_t SCREEN_H = 320;  // logical
+
+// Which way the landscape picture is turned onto the portrait panel. Both the
+// flush transpose (lvgl_glue) and the touch mapping (touch) read this, so they
+// always agree. If the M2 corner labels come out upside down, flip it.
+//   false: landscape (x, y) → panel (319 - y, x)   hardware doc, Solution 4
+//   true:  landscape (x, y) → panel (y, 479 - x)
+constexpr bool SCREEN_ROTATE_CW = false;
