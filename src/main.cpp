@@ -1,13 +1,15 @@
 // TriggerGrid — touchscreen BLE macro pad for the Guition JC3248W535.
 //
 // Entry point. Each module listed in docs/architecture.md is brought up in
-// order by the milestones in docs/roadmap.md. M4: the tile grid, from the
-// built-in layout; taps are only logged.
+// order by the milestones in docs/roadmap.md. M5: tiles send their actions
+// over Bluetooth.
 
 #include <Arduino.h>
+#include "actions/actions.h"
 #include "board_pins.h"
 #include "config/config.h"
 #include "display/display.h"
+#include "hid/hid.h"
 #include "lvgl_glue/lvgl_glue.h"
 #include "touch/touch.h"
 #include "ui/ui.h"
@@ -23,10 +25,24 @@ static void halt(const char* why) {
     }
 }
 
-// M4: taps are only logged. Bluetooth arrives in M5.
+// A tile was tapped: queue its action. False makes the tile flash red.
 static bool on_tile_tap(const PadTile& tile) {
-    Serial.printf("tap: %s\n", tile.label);
-    return true;
+    bool sent = actions_run(tile.action);
+    Serial.printf("tap: %s (%s)\n", tile.label,
+                  sent ? "sent" : "not sent: Bluetooth not connected");
+    return sent;
+}
+
+// Show the Bluetooth state in the status bar whenever it changes.
+static void update_ble_status() {
+    static bool first = true;
+    static bool shown = false;
+    bool connected = hid_connected();
+    if (first || connected != shown) {
+        ui_set_ble_state(connected ? LinkState::Ok : LinkState::Waiting);
+        shown = connected;
+        first = false;
+    }
 }
 
 void setup() {
@@ -66,6 +82,14 @@ void setup() {
     ui_on_tile_tap(on_tile_tap);
     ui_build(pad);
 
+    if (!actions_init()) {
+        halt("actions: could not start the action task");
+    }
+    if (!hid_init(pad.name)) {
+        Serial.println("ble: could not start advertising");
+    }
+    Serial.printf("ble: advertising as \"%s\"\n", pad.name);
+
     lvgl_glue_update();   // render the first frame before the backlight comes up
     display_ramp_backlight(pad.brightness, BACKLIGHT_RAMP_MS);
     Serial.printf("ui: %u pages\n", pad.page_count);
@@ -73,6 +97,7 @@ void setup() {
 
 void loop() {
     lvgl_glue_update();
+    update_ble_status();
 
     static uint32_t last_stats = 0;
     if (millis() - last_stats >= STATS_PERIOD_MS) {

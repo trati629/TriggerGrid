@@ -63,7 +63,7 @@ Status key: ✅ done · 🧪 written and builds, not yet checked on the board ·
 - **Done when:** swiping is smooth, the tiles match the style guide numbers, and every swatch is
   checked on the panel (RGB565).
 
-## ⬜ M5 — Bluetooth keyboard
+## 🧪 M5 — Bluetooth keyboard
 
 - `src/hid/`: NimBLE-Arduino 2.x HID device with a keyboard report and a consumer-control report,
   battery service (fixed 100%), bonding, and auto-reconnect.
@@ -85,6 +85,10 @@ Status key: ✅ done · 🧪 written and builds, not yet checked on the board ·
   on each OS and `👋` on macOS and Linux; and the pad reconnects after a power cycle without
   pairing again.
 - Risk: BLE HID behaviour differs across OSes. Leave time for this milestone.
+- Built: `src/hid/report_map.h` (keyboard with LED output, usage range to 0xFF, consumer 0-0x3FF),
+  `src/hid/` (bonding, Just Works, advertises again on disconnect), `src/actions/` (queue + task on
+  core 0; each job carries its own copy of the keystroke list). The built-in layout already uses real
+  codes, so every tile is live.
 
 ## ⬜ M6 — Layout compiler and pad reader
 
