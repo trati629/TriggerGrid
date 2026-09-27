@@ -233,7 +233,9 @@
         </div>
         <div class="card"><h3>About</h3>
           <dl class="kv" id="device-info"></dl>
-          <div class="row"><button class="btn small" id="reboot">Restart the pad</button>${TG.renderUpdateButton ? TG.renderUpdateButton() : ''}</div>
+          <div class="row"><button class="btn small" id="reboot">Restart the pad</button><button class="btn small" id="update">Update firmware</button></div>
+          <input type="file" id="update-file" accept=".bin" hidden>
+          <span class="note" id="update-note">Choose a firmware.bin (from .pio/build/…). The pad restarts when it's installed; a failed upload changes nothing.</span>
         </div>
       </div>`;
     renderDeviceInfo();
@@ -297,6 +299,26 @@
     }
   }
 
+  // Upload a firmware image to POST /api/ota. The body is the raw .bin.
+  async function updateFirmware(file) {
+    if (!window.confirm(`Install ${file.name} (${Math.round(file.size / 1024)} KB) on the pad?`)) return;
+    $('update-note').textContent = 'Uploading… keep this page open.';
+    let res;
+    if (MOCK) {
+      res = TG.mockDevice('POST', '/api/ota', '', pin ? { 'X-TG-Pin': pin } : {});
+    } else {
+      const r = await fetch('/api/ota', { method: 'POST', headers: pin ? { 'X-TG-Pin': pin } : {}, body: file });
+      res = { status: r.status, body: await r.json().catch(() => null) };
+    }
+    if (res.status === 204) {
+      $('update-note').textContent = 'Installed. The pad is restarting; reload this page in a few seconds.';
+      toast('Firmware installed. Restarting…', 'var(--warn)');
+    } else {
+      $('update-note').textContent = 'Update failed: ' + errorOf(res);
+      toast('Update failed: ' + errorOf(res), 'var(--error)');
+    }
+  }
+
   document.addEventListener('click', async (e) => {
     const el = e.target.closest('button');
     if (!el) return;
@@ -335,6 +357,7 @@
     }
     if (el.id === 'export') return exportConfig();
     if (el.id === 'import') return $('import-file').click();
+    if (el.id === 'update') return $('update-file').click();
     if (el.id === 'reset-default') {
       state.editor = TG.defaultEditor();
       state.jsonError = '';
@@ -346,6 +369,7 @@
 
   document.addEventListener('change', (e) => {
     if (e.target.id === 'import-file' && e.target.files[0]) importConfig(e.target.files[0]);
+    if (e.target.id === 'update-file' && e.target.files[0]) updateFirmware(e.target.files[0]);
   });
 
   document.addEventListener('input', (e) => {

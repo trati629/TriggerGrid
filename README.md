@@ -26,7 +26,8 @@ This repo is also the reference project for a blog series about programming this
 **VS Code, PlatformIO, LVGL and Claude**. Each milestone in the roadmap is tagged so you can
 check out the code as it was at any step.
 
-> **Status:** early. Milestones M0 (project skeleton) and M1 (display bring-up) are done. See the [roadmap](docs/roadmap.md).
+> **Status:** M0 and M1 are done and checked on the board. M2–M10 are written and build, but haven't
+> been checked on the board yet. See the [roadmap](docs/roadmap.md).
 
 ## Hardware
 
@@ -53,11 +54,13 @@ touch code.
 4. PlatformIO sidebar → *guition-jc3248w535* → **Upload and Monitor**.
 5. You should see:
    ```
-   TriggerGrid
+   TriggerGrid 0.10.0
      Chip:  ESP32-S3 rev 0, 2 cores @ 240 MHz
      Flash: 16384 KB
      PSRAM: 8192 KB (ok)
-   display: test pattern drawn
+   ble: advertising as "TriggerGrid"
+   net: no saved network
+   net: setup hotspot "TriggerGrid-XXXX", password …, http://192.168.4.1
    ```
 
 From the command line: `pio run -t upload && pio device monitor`.
@@ -84,6 +87,6 @@ src/            firmware; one folder per module (added milestone by milestone)
 web/            the web config page (runs in your browser; gzipped into the firmware at build time)
 data/           LittleFS image: only the default config.json
 docs/           the docs above; docs/images/ holds the README mockup
-tools/          helper scripts (make_mockup.py)
+tools/          build and helper scripts (embed_web.py, make_default_config.js, make_fonts.js, tests)
 platformio.ini  build configuration
 ```

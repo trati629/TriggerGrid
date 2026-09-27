@@ -161,12 +161,17 @@ All of this is browser code: no firmware changes expected.
   `TG.sanitizeEditor()` forces every loaded or imported layout into the expected types. Checked
   in Chrome against the mock device; not yet against the pad.
 
-## ⬜ M10 — Polish
+## 🧪 M10 — Polish
 
 - Custom fonts (Space Grotesk) and an icon font through `lv_font_conv`.
 - Idle dimming, then screen off; wake on touch.
 - OTA firmware update from the web page.
 - Release build, v1.0 tag, photos for the README.
+- Built: `src/power/` (dim to 20% after `dim` seconds, off 5 minutes later; a touch on a dark
+  screen only wakes it), `POST /api/ota` plus *Update firmware* on the page, and Space Grotesk text
+  fonts in `src/ui/fonts/` (`node tools/make_fonts.js`; Latin-1 plus – — ‘ ’ “ ” • … − €).
+- Not done yet: the icon font (tiles still use Montserrat symbols), self-hosted web fonts (the page
+  falls back to system fonts), and the v1.0 tag and photos, which wait for the board checks.
 
 ---
 
@@ -187,7 +192,17 @@ All of this is browser code: no firmware changes expected.
 
 ## Next steps (right now)
 
-1. Note which case edge the white band of the M1 test pattern sits on, relative to the USB port.
-   That fixes the transpose direction (90° CW or CCW) for M2.
-2. Start M2: create `src/lvgl_glue/` with the two PSRAM buffers and the transposing flush from
-   [hardware/jc3248w535.md](hardware/jc3248w535.md) §Solution 4, pushing through `display_push_frame()`.
+M2–M10 are written and build, but none of it has run on the board yet. Check them in order, since
+each builds on the one before:
+
+1. **M2:** corner labels in the right corners (else flip `SCREEN_ROTATE_CW` in `board_pins.h`), and
+   the frame time on serial.
+2. **M3:** the touch test is no longer on screen (M4 replaced it). To check touch on its own, call
+   `diag_show_touch()` instead of `show_layout()` in `setup()`.
+3. **M4:** swipe between the three pages; check every swatch on the panel.
+4. **M5:** pair from a computer ("TriggerGrid"), then try Copy, Play/Pause and Email sig.
+5. **M6:** `node tools/make_default_config.js`, edit a label in `data/config.json`, `pio run -t uploadfs`.
+6. **M7:** a fresh pad starts the hotspot; the menu shows its QR code.
+7. **M8/M9:** join the hotspot, open http://192.168.4.1, set Wi-Fi, then edit and save a tile.
+8. **M10:** let the pad sit for the dim time; upload `.pio/build/guition-jc3248w535/firmware.bin`
+   from the page.

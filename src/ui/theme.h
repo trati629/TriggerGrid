@@ -7,6 +7,8 @@
 #include <lvgl.h>
 #include <stdint.h>
 
+#include "fonts/fonts.h"
+
 namespace theme {
 
 // ---- colour tokens (style guide, "UI tokens") ----
@@ -47,13 +49,13 @@ struct Grid {
 
 // regular: 8 + 5·88 + 4·6 + 8 = 480 wide, 6 + 3·88 + 2·6 + 6 = 288 tall
 // compact: 6 + 6·73 + 5·6 + 6 = 480 wide, 7 + 4·64 + 3·6 + 7 = 288 tall
-// Icons should be 18 px on compact; Montserrat 16 stands in until the icon
-// font exists (roadmap M10).
+// Labels are Space Grotesk. Icons are LVGL's Montserrat symbols until a
+// custom icon font exists; compact icons are 16 px, not the guide's 18.
 inline const Grid& grid(uint8_t density) {
     static const Grid regular = {5, 3, 88, 88, 6, 8, 6, 14, 10,
-                                 &lv_font_montserrat_16, &lv_font_montserrat_20};
+                                 &space_grotesk_medium_16, &lv_font_montserrat_20};
     static const Grid compact = {6, 4, 73, 64, 6, 6, 7, 12, 8,
-                                 &lv_font_montserrat_14, &lv_font_montserrat_16};
+                                 &space_grotesk_medium_14, &lv_font_montserrat_16};
     return density == 1 ? compact : regular;
 }
 

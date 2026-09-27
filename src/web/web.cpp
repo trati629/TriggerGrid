@@ -6,6 +6,7 @@
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <Preferences.h>
+#include <Update.h>
 #include <WebServer.h>
 
 #include "actions/actions.h"
@@ -382,6 +383,60 @@ static void on_reboot() {
     s_reboot_at = millis() + REBOOT_DELAY_MS;
 }
 
+// ---- API: firmware update -------------------------------------------------------
+// POST /api/ota with a firmware .bin as the body. It is written to the other
+// app partition while the pad keeps running; the pad only switches to it
+// after a complete, verified upload, then restarts. A failed upload changes
+// nothing. The new firmware brings its matching web page with it.
+
+static bool s_ota_ok = false;
+static bool s_ota_authorised = false;
+
+static void collect_ota_body() {
+    HTTPRaw& raw = s_server.raw();
+    switch (raw.status) {
+        case RAW_START: {
+            // Check the PIN before touching flash; the response comes later.
+            String pin = saved_pin();
+            s_ota_authorised = pin.isEmpty() || s_server.header("X-TG-Pin") == pin;
+            s_ota_ok = s_ota_authorised && Update.begin(s_server.clientContentLength());
+            Serial.printf("ota: receiving %d bytes\n", s_server.clientContentLength());
+            break;
+        }
+        case RAW_WRITE:
+            if (s_ota_ok && Update.write(raw.buf, raw.currentSize) != raw.currentSize) {
+                s_ota_ok = false;
+            }
+            break;
+        case RAW_END:
+            if (s_ota_ok) {
+                s_ota_ok = Update.end(true);   // verifies the image and selects it
+            }
+            break;
+        case RAW_ABORTED:
+            if (s_ota_ok) {
+                Update.abort();
+            }
+            s_ota_ok = false;
+            break;
+    }
+}
+
+static void on_ota() {
+    if (!s_ota_authorised) {
+        send_error(401, "PIN required");
+        return;
+    }
+    if (!s_ota_ok) {
+        Serial.printf("ota: failed: %s\n", Update.errorString());
+        send_error(400, Update.errorString());
+        return;
+    }
+    Serial.println("ota: done, restarting");
+    send_no_content();
+    s_reboot_at = millis() + REBOOT_DELAY_MS;
+}
+
 // ---- task ---------------------------------------------------------------------
 
 static void web_task(void*) {
@@ -408,6 +463,7 @@ bool web_begin() {
     s_server.on("/api/ble/forget", HTTP_POST, on_forget_ble);
     s_server.on("/api/pin", HTTP_POST, on_set_pin, collect_small_body);
     s_server.on("/api/reboot", HTTP_POST, on_reboot);
+    s_server.on("/api/ota", HTTP_POST, on_ota, collect_ota_body);
     s_server.onNotFound(on_not_found);
     s_server.begin();
 

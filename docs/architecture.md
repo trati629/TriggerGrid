@@ -99,7 +99,9 @@ Each module is a folder under `src/` with a small header that exposes a C-style 
 | `actions`  | `src/actions/` | Runs a tile's pre-compiled action: one chord, one consumer key, or a keystroke list with a delay |
 | `hid`      | `src/hid/`     | NimBLE HID device: keyboard + consumer reports, pairing, connection state |
 | `net`      | `src/net/`     | Wi-Fi STA with AP fallback, mDNS, credentials in NVS |
-| `web`      | `src/web/`     | Web task: serves the embedded app, streams `config.json`, small JSON API |
+| `web`      | `src/web/`     | Web task: serves the embedded app, streams `config.json`, small JSON API, firmware updates |
+| `power`    | `src/power/`   | Backlight level, idle dimming and screen-off; a touch on a dark screen only wakes it |
+| `diag`     | `src/diag/`    | Bring-up test screens (corners, touch), kept for debugging |
 
 ## Threads and ownership
 
@@ -228,6 +230,7 @@ Responses are small. Only `/api/status` and `/api/wifi/scan` build JSON on the d
 | POST   | `/api/ble/forget` | Clears bonds so the pad can pair with another computer | — |
 | POST   | `/api/pin`        | `{ "old", "new" }`: set or change the web PIN | NVS write |
 | POST   | `/api/reboot`     | — | — |
+| POST   | `/api/ota`        | A firmware `.bin` as the body. Written to the other app partition, verified, then the pad restarts into it | Flash write |
 
 Request limits, checked from `Content-Length`: 32 KB for `/api/config`, 4 KB for everything
 else. Anything larger gets a `413`. The core `WebServer` still reads the body off the socket, but

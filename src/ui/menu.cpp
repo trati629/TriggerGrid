@@ -5,9 +5,10 @@
 
 #include <Arduino.h>
 
-#include "display/display.h"
+#include "power/power.h"
 #include "hid/hid.h"
 #include "net/net.h"
+#include "fonts/fonts.h"
 #include "theme.h"
 #include "version.h"
 
@@ -45,7 +46,7 @@ static lv_obj_t* add_button(lv_obj_t* parent, const char* text, lv_event_cb_t on
     lv_obj_set_style_bg_opa(button, LV_OPA_COVER, LV_STATE_PRESSED);
     lv_obj_add_event_cb(button, on_click, LV_EVENT_CLICKED, nullptr);
 
-    lv_obj_t* label = add_text(button, text, &lv_font_montserrat_14, theme::text());
+    lv_obj_t* label = add_text(button, text, &space_grotesk_regular_14, theme::text());
     lv_obj_center(label);
     return button;
 }
@@ -127,7 +128,7 @@ static void on_close(lv_event_t* e) {
 static void on_brightness(lv_event_t* e) {
     lv_obj_t* slider = (lv_obj_t*)lv_event_get_target(e);
     // Until the next reboot or layout save; the saved value is in config.json.
-    display_set_brightness((uint8_t)lv_slider_get_value(slider));
+    power_set_level((uint8_t)lv_slider_get_value(slider));
 }
 
 static void on_forget_ble(lv_event_t* e) {
@@ -162,7 +163,7 @@ static void open_menu() {
     lv_obj_set_scrollable(s_menu, false);
     lv_obj_set_clickable(s_menu, true);   // don't let taps reach the tiles below
 
-    lv_obj_t* title = add_text(s_menu, "Device", &lv_font_montserrat_20, theme::text());
+    lv_obj_t* title = add_text(s_menu, "Device", &space_grotesk_medium_20, theme::text());
     lv_obj_align(title, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_obj_t* close = add_button(s_menu, "Close", on_close);
     lv_obj_align(close, LV_ALIGN_TOP_RIGHT, 0, -6);
@@ -171,13 +172,13 @@ static void open_menu() {
     lv_obj_t* left = add_column(s_menu, 230);
     lv_obj_align(left, LV_ALIGN_TOP_LEFT, 0, 40);
 
-    add_text(left, "Brightness", &lv_font_montserrat_12, theme::text_muted());
+    add_text(left, "Brightness", &space_grotesk_regular_12, theme::text_muted());
     lv_obj_t* slider = lv_slider_create(left);
     lv_obj_remove_style_all(slider);
     lv_obj_set_size(slider, 210, 6);
     lv_obj_set_style_margin_ver(slider, 8, 0);
     lv_slider_set_range(slider, 10, 255);
-    lv_slider_set_value(slider, display_get_brightness(), LV_ANIM_OFF);
+    lv_slider_set_value(slider, power_level(), LV_ANIM_OFF);
     lv_obj_set_style_bg_color(slider, theme::surface3(), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(slider, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_radius(slider, 3, LV_PART_MAIN);
@@ -200,12 +201,12 @@ static void open_menu() {
     add_button(row, "Setup hotspot", on_setup_hotspot);
     add_button(row, "Reboot", on_reboot);
 
-    s_about_text = add_text(left, "", &lv_font_montserrat_12, theme::text_muted());
+    s_about_text = add_text(left, "", &space_grotesk_regular_12, theme::text_muted());
 
     lv_obj_t* right = add_column(s_menu, 200);
     lv_obj_align(right, LV_ALIGN_TOP_RIGHT, 0, 40);
-    add_text(right, "Wi-Fi", &lv_font_montserrat_12, theme::text_muted());
-    s_wifi_text = add_text(right, "", &lv_font_montserrat_14, theme::text());
+    add_text(right, "Wi-Fi", &space_grotesk_regular_12, theme::text_muted());
+    s_wifi_text = add_text(right, "", &space_grotesk_regular_14, theme::text());
     lv_label_set_long_mode(s_wifi_text, LV_LABEL_LONG_MODE_WRAP);
     lv_obj_set_width(s_wifi_text, 200);
 

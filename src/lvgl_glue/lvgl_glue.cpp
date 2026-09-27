@@ -7,6 +7,7 @@
 
 #include "board_pins.h"
 #include "display/display.h"
+#include "power/power.h"
 #include "touch/touch.h"
 
 // LVGL renders the landscape screen into s_draw_buf. The flush callback
@@ -59,11 +60,22 @@ static void flush_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map)
 // turned the point into landscape coordinates.
 static void touch_read_cb(lv_indev_t* indev, lv_indev_data_t* data) {
     (void)indev;
+    // A touch on a dark screen only wakes it: LVGL sees nothing until that
+    // finger lifts, so it can't press a tile the user couldn't see.
+    static bool swallowing = false;
+
     int16_t x, y;
     bool down = touch_get(&x, &y);
+    if (down && power_screen_off()) {
+        power_wake();
+        swallowing = true;
+    }
+    if (!down) {
+        swallowing = false;
+    }
     data->point.x = x;
     data->point.y = y;
-    data->state = down ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+    data->state = (down && !swallowing) ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
 }
 
 bool lvgl_glue_init() {

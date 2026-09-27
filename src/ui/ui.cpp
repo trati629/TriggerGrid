@@ -2,6 +2,7 @@
 
 #include "ui.h"
 
+#include "fonts/fonts.h"
 #include "theme.h"
 #include "tile.h"
 
@@ -32,10 +33,13 @@ static lv_color_t link_color(LinkState state) {
 
 // ---- status bar ----------------------------------------------------------
 
-static lv_obj_t* add_bar_label(lv_obj_t* bar, const char* text, lv_color_t color) {
+// Text uses Space Grotesk; the Wi-Fi and Bluetooth icons need Montserrat's
+// symbol glyphs.
+static lv_obj_t* add_bar_label(lv_obj_t* bar, const char* text, lv_color_t color,
+                               const lv_font_t* font = &space_grotesk_regular_12) {
     lv_obj_t* label = lv_label_create(bar);
     lv_label_set_text(label, text);
-    lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);
+    lv_obj_set_style_text_font(label, font, 0);
     lv_obj_set_style_text_color(label, color, 0);
     return label;
 }
@@ -64,8 +68,8 @@ static void build_status_bar(lv_obj_t* screen) {
     lv_obj_set_height(spacer, 1);
     lv_obj_set_flex_grow(spacer, 1);
 
-    s_wifi_icon = add_bar_label(s_status_bar, LV_SYMBOL_WIFI, link_color(s_wifi_state));
-    s_ble_icon = add_bar_label(s_status_bar, LV_SYMBOL_BLUETOOTH, link_color(s_ble_state));
+    s_wifi_icon = add_bar_label(s_status_bar, LV_SYMBOL_WIFI, link_color(s_wifi_state), &lv_font_montserrat_12);
+    s_ble_icon = add_bar_label(s_status_bar, LV_SYMBOL_BLUETOOTH, link_color(s_ble_state), &lv_font_montserrat_12);
 
     ui_set_warning(s_warning_text);
 }

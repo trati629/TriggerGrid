@@ -49,6 +49,8 @@
         TG.sanitizeEditor({ settings: {}, pages: [{ name: 'P', tiles: [{ x: '"><img src=x>', label: 'A' }] }] }).pages[0].tiles[0].x, 0],
       ['sanitizeEditor keeps a valid layout intact',
         JSON.stringify(TG.sanitizeEditor(TG.defaultEditor())), JSON.stringify(TG.defaultEditor())],
+      ['Label warning: é and − are fine', TG.labelWarning('Café −'), ''],
+      ['Label warning: emoji is flagged', TG.labelWarning('Hi 👋') !== '', true],
       ['Default file is under 32 KB', TG.savedFile(TG.defaultEditor()).length < TG.MAX_FILE, true],
     ];
   };
