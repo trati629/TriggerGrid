@@ -338,12 +338,86 @@ const LAYOUTS = {
 };
 const layout = () => LAYOUTS[config.settings.hostLayout] || LAYOUTS.us;
 
-// Characters in `text` that the computer's layout can't type (unique, in order).
-function untypable(text) {
-  const map = layout().map;
-  return [...new Set([...(text || '')].filter(c => !map[c]))];
-}
 const hex2 = (n) => n.toString(16).toUpperCase().padStart(2, '0');
+
+// ---- Unicode input: characters that aren't on the keyboard layout ------------
+// A BLE keyboard sends key *positions*, never characters. Anything the layout
+// can't type (é, €, 👋) is typed with the computer's own Unicode input method,
+// which differs per OS. Each method below returns a list of [modifier, usage]
+// keystrokes. Keystroke rules the firmware follows (config-schema.md):
+//   - consecutive keystrokes with the same modifier keep that modifier held;
+//   - [0, 0] releases everything (ends an Alt or Option sequence).
+const HOST_OS = {
+  windows: { name: 'Windows', how: 'Accented letters and symbols such as é, ñ and € are typed with Alt codes (Alt + numpad) and need no setup. Other characters and emoji use hex numpad input: it needs a one-time registry setting and doesn’t work in every app.' },
+  mac:     { name: 'macOS', how: 'Characters that aren’t on the keyboard are typed with Unicode Hex Input. One-time setup: System Settings › Keyboard › Input Sources, add “Unicode Hex Input” and switch to it. It types normal text like a US keyboard.' },
+  linux:   { name: 'Linux', how: 'Characters that aren’t on the keyboard are typed with Ctrl+Shift+U (IBus, the default on GNOME and Ubuntu). Works in most apps; a few terminals and non-IBus desktops ignore it.' },
+  other:   { name: 'Other (iPad, Android, …)', how: 'These have no general way to type a character by its code, so only characters on the US keyboard can be used.' },
+};
+const hostOS = () => HOST_OS[config.settings.hostOS] ? config.settings.hostOS : 'windows';
+
+const KP_DIGIT = (d) => d === '0' ? 0x62 : 0x59 + (+d - 1);            // numpad 1–9, 0
+const hexKeys = (hex, mod, digitKey) =>                                 // type hex digits
+  [...hex].map(c => /\d/.test(c) ? [mod, digitKey(c)] : [mod, USAGE[c.toUpperCase()]]);
+
+// Windows code page 1252 (the Western "ANSI" set) → Alt code. 0xA0–0xFF match Unicode.
+const CP1252 = { '€': 128, '‚': 130, 'ƒ': 131, '„': 132, '…': 133, '†': 134, '‡': 135, 'ˆ': 136, '‰': 137, 'Š': 138,
+  '‹': 139, 'Œ': 140, 'Ž': 142, '‘': 145, '’': 146, '“': 147, '”': 148, '•': 149, '–': 150, '—': 151, '˜': 152,
+  '™': 153, 'š': 154, '›': 155, 'œ': 156, 'ž': 158, 'Ÿ': 159 };
+const cp1252 = (ch, cp) => CP1252[ch] ?? (cp >= 0xA0 && cp <= 0xFF ? cp : null);
+
+const UNICODE_INPUT = {
+  // Linux (IBus): Ctrl+Shift+U, the hex code point, Space.  é → Ctrl+Shift+U e 9 Space
+  linux: (ch, cp) => ({ strokes: [[0x03, USAGE.U], ...hexKeys(cp.toString(16), 0, d => USAGE[d]), [0, USAGE.SPACE]] }),
+
+  // macOS (Unicode Hex Input): hold Option and type 4 hex digits per UTF-16 unit.
+  // Emoji are two units (a surrogate pair), typed in one Option hold.
+  mac: (ch) => {
+    const units = [...Array(ch.length).keys()].map(i => ch.charCodeAt(i).toString(16).padStart(4, '0'));
+    return { strokes: [...hexKeys(units.join(''), 0x04, d => USAGE[d]), [0, 0]] };
+  },
+
+  // Windows: Alt + numpad decimal code for the CP1252 set (no setup), otherwise
+  // Alt + numpad-plus + hex (needs EnableHexNumpad in the registry). Both need NumLock.
+  windows: (ch, cp) => {
+    const code = cp1252(ch, cp);
+    if (code != null)
+      return { np: true, strokes: [...[...('0' + String(code).padStart(3, '0'))].map(d => [0x04, KP_DIGIT(d)]), [0, 0]] };
+    return { np: true, hexNumpad: true,
+             strokes: [[0x04, 0x57 /* numpad + */], ...hexKeys(cp.toString(16), 0x04, KP_DIGIT), [0, 0]] };
+  },
+
+  other: () => null,
+};
+
+// Compile typed text into keystrokes: the US layout first, the OS's Unicode method
+// for everything else. Returns { a, unicode, warn } or { error }.
+function compileText(action) {
+  const map = layout().map, os = hostOS(), chars = [...(action.text || '')];
+  const strokes = [], unicode = [], bad = [];
+  let np = false, hexNumpad = false;
+  for (const ch of chars) {
+    if (map[ch]) { strokes.push(map[ch]); continue; }
+    const cp = ch.codePointAt(0);
+    const seq = cp < 0x20 || (cp >= 0x7F && cp < 0xA0) ? null : UNICODE_INPUT[os](ch, cp);   // no control characters
+    if (!seq) { bad.push(ch); continue; }
+    strokes.push(...seq.strokes); unicode.push(ch);
+    np ||= !!seq.np; hexNumpad ||= !!seq.hexNumpad;
+  }
+  const list = (cs) => [...new Set(cs)].map(c => `“${c}”`).join(', ');
+  if (bad.length) return { error: os === 'other'
+    ? `Can't type ${list(bad)}: with the computer set to ${HOST_OS.other.name}, only US-keyboard characters work.`
+    : `Can't type ${list(bad)} (control characters).` };
+  if (chars.length > 1024) return { error: 'Text is longer than 1024 characters.' };
+  if (strokes.length > 4096) return { error: `This text needs ${strokes.length} keystrokes; the limit is 4096.` };
+  const a = { t: 's', d: action.charDelayMs ?? 10, s: strokes.map(([m, u]) => hex2(m) + hex2(u)).join('') };
+  if (np) a.np = true;   // firmware turns NumLock on for the numpad codes, then restores it
+  return { a, strokes: strokes.length, unicode: [...new Set(unicode)], hexNumpad };
+}
+// Characters that can't be typed at all with the current settings (used by tests).
+function untypable(text) {
+  const r = compileText({ type: 'text', text });
+  return r.error ? [...new Set([...text].filter(c => compileText({ type: 'text', text: c }).error))] : [];
+}
 function mixHex(a, b, t) {    // same maths as the style guide's `soft` tile: t of a over b
   return [0, 2, 4].map(i => hex2(Math.round(parseInt(a.substr(i, 2), 16) * t + parseInt(b.substr(i, 2), 16) * (1 - t)))).join('');
 }
@@ -364,13 +438,7 @@ function compileAction(action) {
   if (action.type === 'media') {
     return action.key in CONSUMER ? { a: { t: 'c', u: CONSUMER[action.key] } } : { error: `Unknown media key “${action.key}”.` };
   }
-  if (action.type === 'text') {
-    const bad = untypable(action.text);
-    if (bad.length) return { error: `Can't type ${bad.map(c => `“${c === '\n' ? '↵' : c}”`).join(', ')} on a ${layout().name} keyboard.` };
-    if ([...action.text].length > 1024) return { error: 'Text is longer than 1024 characters.' };
-    const map = layout().map;
-    return { a: { t: 's', d: action.charDelayMs ?? 10, s: [...action.text].map(c => hex2(map[c][0]) + hex2(map[c][1])).join('') } };
-  }
+  if (action.type === 'text') return compileText(action);
   return { error: `Unknown action type “${action.type}”.` };
 }
 
@@ -411,7 +479,7 @@ const svg = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 20 20">${ICON
 // ---- config (docs/config-schema.md, version 1) -----------------------------
 const config = {
   version: 1,
-  settings: { deviceName: 'TriggerGrid', density: 'regular', brightness: 180, dimAfterSec: 120, hostLayout: 'us' },
+  settings: { deviceName: 'TriggerGrid', density: 'regular', brightness: 180, dimAfterSec: 120, hostLayout: 'us', hostOS: 'windows' },
   pages: [
     { id: 'edit', name: 'Editing', tiles: [
       { id: 'copy',  x: 0, y: 0, w: 1, h: 1, label: 'Copy',  icon: 'copy',  color: 'azure', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'C'] } },
@@ -609,11 +677,14 @@ function renderLayout() {
 }
 
 function textNote(a) {
-  const bad = untypable(a.text);
-  const count = `${[...(a.text || '')].length} / 1024 · typed on a ${layout().name} keyboard`;
-  return bad.length
-    ? `<span class="err">${esc(compileAction(a).error)} Remove them, or change the computer's keyboard layout in Settings.</span>`
-    : `<span class="note">${count}</span>`;
+  const r = compileText(a), os = HOST_OS[hostOS()];
+  if (r.error) return `<span class="err">${esc(r.error)} Remove them, or change the computer in Settings.</span>`;
+  const count = `${[...(a.text || '')].length} / 1024 characters · ${r.strokes} keystrokes`;
+  if (!r.unicode.length) return `<span class="note">${count}</span>`;
+  const which = r.unicode.slice(0, 6).map(c => `“${esc(c)}”`).join(', ') + (r.unicode.length > 6 ? '…' : '');
+  const winNote = r.hexNumpad ? ' Emoji and characters outside the Alt-code set use Windows hex numpad input, which needs a one-time registry setting and may not work in every app.' : '';
+  return `<span class="note" style="color:${r.hexNumpad ? 'var(--warn)' : 'var(--text-muted)'}">${count}<br>
+    ${which} will be typed with ${os.name} Unicode input.${winNote}</span>`;
 }
 
 function renderEditor() {
@@ -689,10 +760,12 @@ function renderDevice() {
       <div class="card"><h3>Bluetooth<span class="state" style="color:var(--ok)">Connected</span></h3>
         <dl class="kv"><dt>Name</dt><dd>${esc(s.deviceName)}</dd><dt>Paired with</dt><dd>Desk-PC</dd></dl>
         <div class="field"><label for="f-name">Device name</label><input type="text" id="f-name" maxlength="24" value="${esc(s.deviceName)}"></div>
+        <div class="field"><label for="f-os">Computer</label>
+          <select id="f-os">${Object.entries(HOST_OS).map(([k, o]) => `<option value="${k}" ${k === hostOS() ? 'selected' : ''}>${o.name}</option>`).join('')}</select>
+          <span class="note">${HOST_OS[hostOS()].how}</span></div>
         <div class="field"><label for="f-layout">Computer's keyboard layout</label>
-          <select id="f-layout">${Object.entries(LAYOUTS).map(([k, l]) => `<option value="${k}" ${k === s.hostLayout ? 'selected' : ''}>${l.name}</option>`).join('')}
-            <option disabled>UK English (coming later)</option><option disabled>German (coming later)</option></select>
-          <span class="note">Match the layout set on the computer. Text tiles are turned into keystrokes for this layout.</span></div>
+          <select id="f-layout">${Object.entries(LAYOUTS).map(([k, l]) => `<option value="${k}" ${k === s.hostLayout ? 'selected' : ''}>${l.name}</option>`).join('')}</select>
+          <span class="note">Characters on this layout are typed as normal keys; anything else uses the computer's Unicode input above.</span></div>
         <div class="row"><button class="btn small danger" data-toast="Bluetooth pairing cleared" data-color="var(--warn)">Forget paired computer</button></div>
       </div>
       <div class="card"><h3>Security<span class="state" style="color:var(--warn)">No PIN</span></h3>
@@ -770,6 +843,7 @@ document.addEventListener('input', (e) => {
     case 'f-dim': config.settings.dimAfterSec = +v; markDirty(); return;
     case 'f-name': config.settings.deviceName = v; markDirty(); return;
     case 'f-layout': config.settings.hostLayout = v; markDirty(); return;
+    case 'f-os': config.settings.hostOS = v; markDirty(); return render();
     default: return;
   }
   markDirty();

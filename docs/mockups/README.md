@@ -11,9 +11,9 @@ double-click it. Add `#settings` to the URL to open the settings view directly.
 
 ![Dragging a preset from the tray onto the screen](../images/web-config-drag.png)
 
-| The config.json panel: editor vs compiled pad | Text the keyboard layout can't type |
+| The config.json panel: editor vs compiled pad | Emoji in a text tile, computer set to Windows |
 |---|---|
-| ![config.json panel showing the editor and pad sections side by side](../images/web-config-json.png) | ![Text box with a red error listing ë and an emoji](../images/web-config-text-error.png) |
+| ![config.json panel showing the editor and pad sections side by side](../images/web-config-json.png) | ![Text box with an emoji and an amber note that it will be typed with Windows Unicode input](../images/web-config-text-unicode.png) |
 
 | Settings view | Phone layout |
 |---|---|
@@ -36,9 +36,15 @@ double-click it. Add `#settings` to the URL to open the settings view directly.
   panel shows the human-readable `editor` section next to the compiled `pad` section, the only
   part the device reads, and updates as you edit. Watch `CTRL` + `C` become `"m": 1, "k": [6]`.
   Below them, a meter shows the whole file's size against the device's 32 KB limit.
-- **Typed text is checked against the computer's keyboard layout** (Settings → Bluetooth →
-  *Computer's keyboard layout*; US English for now). Characters that layout can't type, like
-  `ë` or emoji, are listed under the text box, and *Try it* and *Save* are blocked until they're gone.
+- **Typed text can use any character, including accents, other scripts and emoji.** Characters on
+  the US layout are typed as normal keys. Everything else is compiled into the computer's
+  Unicode input method, chosen by Settings → Bluetooth → *Computer* (Windows, macOS, Linux,
+  Other). The Settings note explains the one-time setup for each.
+  - Under the text box, the editor shows how many keystrokes the text needs and which characters
+    use Unicode input.
+  - It warns in amber where the method is unreliable (emoji on Windows).
+  - It blocks *Try it* and *Save* only when a character can't be typed at all (anything beyond
+    the US keyboard when *Computer* is set to Other).
 - *Try it* shows the compiled action it would send to `POST /api/test`, and *Save* shows the
   size of the file it would upload.
 - **Record combo:** press a key combination and it's converted to config key names (`CTRL`, `SHIFT`, `M`).

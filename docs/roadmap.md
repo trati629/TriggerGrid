@@ -55,14 +55,23 @@ Status key: ✅ done · 🔜 next · ⬜ planned
 
 - `src/hid/`: NimBLE-Arduino 2.x HID device with a keyboard report and a consumer-control report,
   battery service (fixed 100%), bonding, and auto-reconnect.
+  - The keyboard report descriptor's usage range must reach at least `0x73`. Many examples stop at
+    `0x65`, which silently drops F13–F24.
+  - Include the LED **output** report, so the pad can read the computer's NumLock state.
 - `src/actions/`: FreeRTOS queue + task on core 0 that runs the three compiled action types from
   the [config schema](config-schema.md#compiled-actions): key chord, consumer key and
-  keystroke list. The firmware works in HID codes only and has no key-name table.
+  keystroke list. Keystroke lists follow the schema's *Keystroke rules* (modifiers held
+  between same-modifier keystrokes, `0000` release, NumLock handling). The firmware works in HID
+  codes only and has no key-name table.
 - Wire the M4 tiles to real actions, with the codes written directly in the hard-coded layout
   (Ctrl+C = modifier `0x01`, usage `0x06`). The status bar shows BLE state.
 - Test pairing with Windows, macOS, Linux, and at least one phone.
-- **Done when:** a tile tap types Ctrl+C / plays or pauses media on each OS, and the pad reconnects
-  after a power cycle without pairing again.
+- Test Unicode typing with hard-coded keystroke lists for `é` and `👋` on each OS (see the method
+  table in the schema). The mockup's compiler produces the lists: set *Computer* in Settings,
+  type the text, and copy the `s` value from the *pad* pane.
+- **Done when:** a tile tap types Ctrl+C / plays or pauses media on each OS; `é` types correctly
+  on each OS and `👋` on macOS and Linux; and the pad reconnects after a power cycle without
+  pairing again.
 - Risk: BLE HID behaviour differs across OSes. Leave time for this milestone.
 
 ## ⬜ M6 — Layout compiler and pad reader
@@ -71,9 +80,10 @@ This milestone has two halves. The browser half needs no hardware.
 
 - **Browser (`web/lib/`):** `compile.js` turns the `editor` section into the `pad` section
   (swatches → RGB, icon names → indexes, key names → HID codes, text → keystroke hex using
-  `keymap.js` and `layouts/us.js`). Also `validate.js` for the grid rules.
+  `keymap.js`, `layouts/us.js` and `unicode.js` for the per-OS Unicode input methods). Also
+  `validate.js` for the grid rules.
 - **Browser tests:** `web/test.html` runs in any browser and checks the compiler against known
-  answers (Ctrl+C, `"Cheers,\nAlex"`, a soft tile's mixed colour). It also has a *Download
+  answers (Ctrl+C, `"Cheers,\nAlex"`, a soft tile's mixed colour, `é` and `👋` on each OS). It also has a *Download
   default config* button that writes `data/config.json`.
 - **Firmware (`src/config/`):** read only the `pad` section with an ArduinoJson filter into a `Pad`
   struct in PSRAM, run the bounds checks, and fall back to the built-in default.

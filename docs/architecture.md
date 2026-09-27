@@ -41,7 +41,7 @@ drawing the screen or sending a keystroke. So the web side follows one rule:
 | Draw the editor, preview, drag & drop | ✅ all of it | — |
 | Validate the layout (grid fit, overlaps, lengths, key names) | ✅ full checks, with messages | Cheap bounds checks only, so bad data can't crash it |
 | Key names (`CTRL`, `F13`) → HID usage codes | ✅ | — (receives numbers) |
-| Typed text → keystrokes (including the host's keyboard layout) | ✅ | — (receives a keystroke list) |
+| Typed text → keystrokes (the host's keyboard layout, plus its OS's Unicode input for é, €, emoji…) | ✅ | — (receives a keystroke list; holds modifiers across keystrokes and handles NumLock, see schema) |
 | Swatch names and solid/soft style → final colours | ✅ | — (receives RGB values) |
 | Icon names → icon font index | ✅ | — (receives an index) |
 | Import / export / backup | ✅ (a file download or upload in the browser) | Streams the file as-is |
@@ -52,8 +52,8 @@ drawing the screen or sending a keystroke. So the web side follows one rule:
 What this buys:
 
 - **No lookup tables in firmware.** The device needs no key-name table, no character → key table,
-  no swatch table and no colour maths. Supporting a new keyboard layout (for example UK or German) is a
-  browser-only change.
+  no swatch table and no colour maths. Supporting a new keyboard layout (for example UK or German), or a new
+  Unicode input method, is a browser-only change.
 - **No config parsing on the web path.** `GET /api/config` streams the file from flash in 1 KB
   chunks. The device parses only when the UI reloads, and then only the compact `pad` section.
 - **Tiny, cacheable web app.** The browser downloads the app once, and later visits get a
@@ -184,7 +184,7 @@ When reading `pad`, the device rejects the file if any of these fail:
 - 1–12 pages, 0–24 tiles per page;
 - each tile's `x + w` and `y + h` fit the grid for `pad.density`, with `w` and `h` in 1–2;
 - labels ≤ 24 bytes;
-- a keystroke list is ≤ 1024 strokes, and the per-character delay is 5–100 ms;
+- a keystroke list is ≤ 4096 strokes, and the per-keystroke delay is 5–100 ms;
 - modifier and usage values are single bytes (keyboard) or ≤ `0x3FF` (consumer).
 
 Overlap checking stays in the browser. If two tiles overlap, the device just draws both, which

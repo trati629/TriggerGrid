@@ -27,7 +27,8 @@ exported layout is safe to share.
       "density": "regular",
       "brightness": 180,
       "dimAfterSec": 120,
-      "hostLayout": "us"
+      "hostLayout": "us",
+      "hostOS": "windows"
     },
     "pages": [
       {
@@ -108,7 +109,8 @@ exported layout is safe to share.
 | `density`     | enum   | `"regular"`     | `regular` (5×3) or `compact` (6×4). See style guide |
 | `brightness`  | int    | `180`           | 10–255 |
 | `dimAfterSec` | int    | `120`           | Dim to 20% after this many idle seconds. `0` = never |
-| `hostLayout`  | enum   | `"us"`          | Keyboard layout set on the **computer**. Used by the browser to turn `text` into keystrokes. Starts with `us`; others (e.g. `uk`, `de`) are browser-only additions |
+| `hostLayout`  | enum   | `"us"`          | Keyboard layout set on the **computer**. Characters on it are typed as normal keys. Only `us` for now; others (e.g. `uk`, `de`) would be browser-only additions |
+| `hostOS`      | enum   | `"windows"`     | The computer's OS: `windows`, `mac`, `linux` or `other`. Picks the Unicode input method for characters not on the layout (see *Characters beyond the keyboard*) |
 
 ### Page
 
@@ -165,11 +167,30 @@ different OS keyboard layout the same position can produce a different character
 { "type": "text", "text": "hello@example.com", "charDelayMs": 10 }
 ```
 
-- ≤ 1024 characters. Printable ASCII, `\n` (Enter) and `\t` (Tab).
+- ≤ 1024 characters of any Unicode text, including accented letters, other scripts and emoji,
+  plus `\n` (Enter) and `\t` (Tab). Other control characters are rejected.
 - `charDelayMs` is optional (default 10, range 5–100). Increase it if the computer drops characters.
-- The browser converts each character into a keystroke for the computer's keyboard layout
-  (`settings.hostLayout`). Characters that layout can't type are flagged in the editor and can't
-  be saved.
+- The browser compiles the text into keystrokes. Characters on the computer's keyboard layout
+  (`settings.hostLayout`) become normal key presses. Everything else is typed with the OS's
+  Unicode input method (`settings.hostOS`), described next. The editor shows which characters use
+  Unicode input and warns where the method has limits.
+
+#### Characters beyond the keyboard
+
+A Bluetooth keyboard sends key *positions*, never characters, so `é`, `€` or `👋` can only be
+typed through the computer's own Unicode input. The browser compiles each such character into
+that OS's key sequence:
+
+| `hostOS`  | Method | Example: `é` (U+00E9) | Covers | One-time setup on the computer |
+|-----------|--------|------------------------|--------|--------------------------------|
+| `mac`     | Unicode Hex Input: hold Option, type 4 hex digits per UTF-16 unit | Option + `0 0 e 9` | Everything, including emoji (typed as a surrogate pair, 8 digits) | System Settings › Keyboard › Input Sources: add **Unicode Hex Input** and switch to it. It types normal text like US English |
+| `linux`   | IBus: Ctrl+Shift+U, hex code point, Space | Ctrl+Shift+U `e 9` Space | Everything, including emoji | None on GNOME/Ubuntu (IBus is the default). Some terminals and non-IBus desktops ignore it |
+| `windows` | Alt codes: hold Alt, numpad `0` + decimal code | Alt + numpad `0 2 3 3` | The Windows-1252 set: Western accented letters, `€ £ © ° – — “ ” …` | None |
+| `windows` | Hex numpad: hold Alt, numpad `+`, hex digits | (used for `ő`, `ł`, `→`, emoji…) | Many apps, **not all**; emoji are the least reliable | Registry: `HKCU\Control Panel\Input Method`, string `EnableHexNumpad` = `1`, then sign out and in |
+| `other`   | None (iPad, Android, …) | — | US-keyboard characters only; anything else is an error | — |
+
+Windows Alt codes use the system's "ANSI" code page, which is Windows-1252 on Western-language
+installs. On other installs the same codes can produce different characters.
 
 ### `media`: consumer control key
 
@@ -225,7 +246,7 @@ table and does no colour maths.
 |-------|---------|--------|---------------|
 | `"k"` | Key chord | `m`: modifier byte; `k`: up to 6 HID keyboard usage codes | Press all, release all |
 | `"c"` | Consumer (media) key | `u`: HID consumer usage (e.g. `205` = `0xCD` Play/Pause) | Press, release |
-| `"s"` | Keystroke list (typed text) | `d`: delay per keystroke in ms (5–100); `s`: hex string, 4 hex digits per keystroke = modifier byte + usage code | For each keystroke: press, wait `d`, release |
+| `"s"` | Keystroke list (typed text) | `d`: delay per keystroke in ms (5–100); `s`: hex string, 4 hex digits per keystroke = modifier byte + usage code; `np` (optional): `true` if the list uses numpad keys | See *Keystroke rules* below |
 
 Modifier byte bits (standard HID): `0x01` L-Ctrl, `0x02` L-Shift, `0x04` L-Alt, `0x08` L-GUI,
 `0x10` R-Ctrl, `0x20` R-Shift, `0x40` R-Alt (AltGr), `0x80` R-GUI.
@@ -233,6 +254,25 @@ Modifier byte bits (standard HID): `0x01` L-Ctrl, `0x02` L-Shift, `0x04` L-Alt, 
 Worked example: `"Cheers,\nAlex"` on a US layout compiles to
 `0206 000B 0008 0008 0015 0016 0036 0028 0204 000F 0008 001B` (spaces added here for reading):
 `C` is Shift (`02`) + usage `06`, `,` is `36`, the newline is Enter (`28`), and so on.
-The hex string is up to 1024 keystrokes (4096 characters).
+The hex string is up to 4096 keystrokes (16384 hex digits). Unicode characters take several
+keystrokes each (an emoji is 7–9), and the whole file must still fit in 32 KB.
+
+#### Keystroke rules
+
+The firmware plays a keystroke list like this. These rules are all it needs for normal typing and
+for every Unicode method above:
+
+1. For each keystroke `MMKK`: send the report with modifiers `MM` and key `KK`, wait `d` ms, then
+   send modifiers `MM` with no key (the key is released and the modifiers **stay held**).
+2. If the next keystroke has a **different** modifier byte, first release everything, then wait `d`.
+3. `0000` means "release everything". The compiler puts it after each Alt-code or Option
+   sequence, so two sequences in a row don't merge into one.
+4. At the end of the list, release everything.
+5. If `np` is `true`: before typing, check the NumLock state the computer reports (the HID LED
+   output report). If NumLock is off, tap NumLock (`0x53`) first and tap it again at the end to
+   restore it.
+
+Example, Windows, `é` then `!`: `0462 045A 045B 045B 0000 021E`. That is Alt held while typing numpad
+`0 2 3 3`, then release, then Shift + `1`.
 
 `POST /api/test` takes one of these action objects on its own, e.g. `{ "t": "c", "u": 205 }`.
