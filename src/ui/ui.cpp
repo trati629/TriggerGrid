@@ -118,6 +118,11 @@ static void build_pages(lv_obj_t* screen, const Pad& pad) {
         }
         lv_obj_t* page = lv_tileview_add_tile(s_pages, p, 0, dir);
         lv_obj_remove_style_all(page);
+        // In LVGL 9 position and size are styles too, so remove_style_all()
+        // also wiped the tileview's placement of this page. Put it back: page
+        // p sits one screen-width to the right of page p - 1. Without this
+        // every page is drawn on top of the first and nothing can be swiped.
+        lv_obj_set_pos(page, LV_PCT(p * 100), 0);
         lv_obj_set_size(page, LV_PCT(100), LV_PCT(100));
         lv_obj_set_scrollbar_mode(page, LV_SCROLLBAR_MODE_OFF);
 
