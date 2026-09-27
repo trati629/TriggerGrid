@@ -60,7 +60,8 @@ touch code.
    ```
 
 From the command line: `pio run -t upload && pio device monitor`.
-When the web UI exists, upload it with `pio run -t uploadfs`.
+The web config page is built into the firmware, so a normal upload includes it. `pio run -t uploadfs`
+is only needed to flash a default layout (`data/config.json`).
 
 ## Documentation
 
@@ -79,7 +80,8 @@ When the web UI exists, upload it with `pio run -t uploadfs`.
 ```
 include/        board_pins.h (pin map), lv_conf.h (LVGL config)
 src/            firmware; one folder per module (added milestone by milestone)
-data/           LittleFS image: web config page + default config.json
+web/            the web config page (runs in your browser; gzipped into the firmware at build time)
+data/           LittleFS image: only the default config.json
 docs/           the docs above; docs/images/ holds the README mockup
 tools/          helper scripts (make_mockup.py)
 platformio.ini  build configuration

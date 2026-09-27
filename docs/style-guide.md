@@ -215,8 +215,9 @@ The web page applies the same rules to a browser layout.
   `line` outline.
 - Radius: 12 px for panels, 8 px for inputs and buttons.
 - Spacing scale: 4, 8, 12, 16, 24, 32.
-- The page is plain HTML/CSS/JS served from LittleFS, with no build step and no CDN (it must work
-  in AP mode with no internet). Fonts are self-hosted WOFF2 subsets in `data/`.
+- The page is plain HTML/CSS/JS in `web/`, with no framework and no CDN (it must work in AP mode
+  with no internet). It is gzipped into the firmware at build time. Fonts are self-hosted WOFF2
+  subsets in `web/fonts/`. Keep them small (Latin subset, 2 weights): every byte ships in the firmware.
 
 ### CSS tokens
 
@@ -232,7 +233,10 @@ The web page applies the same rules to a browser layout.
 
 ### LVGL tokens
 
-Define once in `src/ui/theme.h` and never write a hex value anywhere else in UI code:
+Define the interface (chrome) tokens once in `src/ui/theme.h` and never write a hex value anywhere
+else in UI code. Tile colours are **not** in firmware: the browser compiles swatch names and the
+solid/soft style into final RGB values in the `pad` section (see the config schema), and the
+firmware draws them as given.
 
 ```cpp
 namespace theme {
@@ -240,6 +244,6 @@ inline lv_color_t bg()        { return lv_color_hex(0x101112); }
 inline lv_color_t surface1()  { return lv_color_hex(0x1A1C1E); }
 inline lv_color_t surface2()  { return lv_color_hex(0x24272A); }
 inline lv_color_t text()      { return lv_color_hex(0xF2F3F4); }
-// ...one function per token; swatches looked up by name from a table.
+// ...one function per chrome token. No swatch table here: tile colours arrive compiled.
 }
 ```

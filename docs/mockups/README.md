@@ -35,9 +35,11 @@ double-click it. Add `#settings` to the URL to open the settings view directly.
 **What's faked:** nothing is sent to a device. *Save*, *Try it* and the Wi-Fi, Bluetooth and backup
 buttons only show a message. Status values (IP, signal, heap) are placeholders.
 
-**How it maps to the real page:** the real `data/index.html` (M8) can start from this file. The
+**How it maps to the real page:** the real `web/index.html` (M8/M9) can start from this file. The
 data model, grid maths, swatch table and key-name mapping are already the ones the firmware will
-use. What changes is loading and saving through `GET`/`PUT /api/config`.
+use. What changes is loading and saving through `GET`/`PUT /api/config`, and compiling the
+`pad` section before saving (see the [config schema](../config-schema.md#the-pad-section-compiled)).
+The *config.json* panel in the mockup shows the `editor` section.
 
 **Design notes:**
 - The device preview is drawn at 1:1 (480×320 plus bezel) using the style-guide grid numbers, and
@@ -45,7 +47,7 @@ use. What changes is loading and saving through `GET`/`PUT /api/config`.
 - The interface is neutral graphite. The only colour is in the tiles and the status dots, and the
   primary button is white, as the style guide specifies.
 - Fonts fall back to system fonts here. The real page will self-host Space Grotesk and JetBrains
-  Mono subsets in `data/fonts/`.
+  Mono subsets in `web/fonts/`, embedded in the firmware.
 
 To refresh the screenshots after changing the mockup, render it in a browser (desktop at
 1360×860, phone at 390 px wide) and save the images over the files in `docs/images/`. The
