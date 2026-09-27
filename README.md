@@ -16,6 +16,12 @@ Regenerate with <code>python3 tools/make_mockup.py</code>.</sub></p>
 - Set up the tiles from your **browser**. The pad joins your home Wi-Fi (`http://triggergrid.local`)
   or creates its own hotspot if it can't.
 
+<p align="center">
+  <img src="docs/images/web-config-editor.png" width="760"
+       alt="Mockup of the web config page: page list on the left, an actual-size preview of the pad in the middle, and a tile editor on the right with label, colour swatches, style, size, icon and key combo">
+</p>
+<p align="center"><sub>Web config page mockup. Try the clickable version in <a href="docs/mockups/README.md">docs/mockups</a>.</sub></p>
+
 This repo is also the reference project for a blog series about programming this board with
 **VS Code, PlatformIO, LVGL and Claude**. Each milestone in the roadmap is tagged so you can
 check out the code as it was at any step.
@@ -62,6 +68,7 @@ When the web UI exists, upload it with `pio run -t uploadfs`.
 |-----|--------------|
 | [docs/architecture.md](docs/architecture.md) | How it fits together: modules, threads, networking, web API, security |
 | [docs/style-guide.md](docs/style-guide.md) | Colours, tile grid, typography, motion, for both device and web |
+| [docs/mockups/](docs/mockups/README.md) | Clickable mockup of the web config page, with screenshots |
 | [docs/config-schema.md](docs/config-schema.md) | The `config.json` format for pages, tiles and actions |
 | [docs/roadmap.md](docs/roadmap.md) | Milestones M0–M10 and next steps |
 | [docs/hardware/jc3248w535.md](docs/hardware/jc3248w535.md) | Board pinout, LVGL setup, known problems and fixes |

@@ -91,6 +91,8 @@ Status key: ✅ done · 🔜 next · ⬜ planned
 
 ## ⬜ M9 — Visual web editor
 
+Design reference: [mockups/web-config.html](mockups/web-config.html) (see [mockups/README.md](mockups/README.md)).
+
 - True-scale preview of each page using the same tokens (see style guide).
 - Tap a tile to edit it: label, icon, swatch picker, style, span, action editor with keycap input
   ("press the combo" capture in the browser).

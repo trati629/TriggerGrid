@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TriggerGrid config — mockup</title>
+<!--
+  Design mockup of the device's web config page (roadmap M8/M9).
+  Self-contained: no CDN, no build step — the same rules as the real page in data/.
+  Data follows docs/config-schema.md; tokens and grid numbers follow docs/style-guide.md.
+  Nothing talks to a device: Save / Try it / Wi-Fi actions only show a toast.
+-->
+<style>
+:root {
+  --bg: #101112; --surface-1: #1A1C1E; --surface-2: #24272A; --surface-3: #2E3236;
+  --line: #383C41; --text: #F2F3F4; --text-muted: #A0A6AC; --text-faint: #62696F;
+  --on-bright: #0E0F10; --ok: #3DDC84; --warn: #FFB224; --error: #FF4D4F; --link: #5AA9FF;
+  --radius-tile: 14px; --radius-panel: 12px; --radius-control: 8px;
+  --font: 'Space Grotesk', 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, 'DejaVu Sans Mono', monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 400 14px/1.45 var(--font); }
+button, input, select, textarea { font: inherit; color: inherit; }
+svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8;
+        stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* ---------- app shell ---------- */
+.app { display: grid; grid-template-rows: 56px 1fr; grid-template-columns: minmax(0, 1fr); height: 100vh; }
+header { display: flex; align-items: center; gap: 16px; padding: 0 16px;
+         border-bottom: 1px solid var(--line); background: var(--bg); }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; letter-spacing: .2px; }
+.brand-mark { width: 22px; height: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+.brand-mark i { border-radius: 3px; background: var(--text); }
+.brand-mark i:nth-child(2) { background: #C6F432; } .brand-mark i:nth-child(3) { background: #3D8BFF; }
+.chips { display: flex; gap: 8px; margin-left: 8px; }
+.chip { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px;
+        background: var(--surface-1); border: 1px solid var(--line); color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.chip b { color: var(--text); font-weight: 500; }
+.spacer { flex: 1; }
+.dirty { display: none; align-items: center; gap: 6px; color: var(--warn); font-size: 13px; }
+.dirty.on { display: flex; }
+.dirty .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+
+.btn { height: 36px; padding: 0 14px; border-radius: var(--radius-control); border: 1px solid var(--line);
+       background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.btn:hover { background: var(--surface-3); }
+.btn.primary { background: var(--text); color: var(--on-bright); border-color: var(--text); font-weight: 600; }
+.btn.primary:hover { background: #FFFFFF; }
+.btn.primary:disabled { background: var(--surface-3); color: var(--text-faint); border-color: var(--surface-3); cursor: default; }
+.btn.danger { color: var(--error); }
+.btn.small { height: 30px; padding: 0 10px; font-size: 13px; }
+.btn:focus-visible, .seg button:focus-visible, .swatch:focus-visible, .tile:focus-visible,
+.nav-item:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--text); outline-offset: 2px; }
+
+main { display: grid; grid-template-columns: 232px 1fr 360px; min-height: 0; }
+main.no-editor { grid-template-columns: 232px 1fr; }
+main > * { min-width: 0; }   /* let the stage shrink so the preview can scale to fit */
+main.no-editor .editor { display: none; }
+
+/* ---------- sidebar ---------- */
+.sidebar { border-right: 1px solid var(--line); padding: 16px 12px; overflow: auto; display: flex; flex-direction: column; gap: 24px; }
+.side-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-faint); padding: 0 8px 8px; }
+.nav-item { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: var(--radius-control);
+            border: 0; background: transparent; color: var(--text-muted); cursor: pointer; text-align: left; }
+.nav-item:hover { background: var(--surface-1); color: var(--text); }
+.nav-item.active { background: var(--surface-2); color: var(--text); }
+.nav-item .count { margin-left: auto; font-size: 12px; color: var(--text-faint); }
+.nav-item .grip { color: var(--text-faint); }
+.nav-item.add { color: var(--text-faint); }
+.pages-list { display: flex; flex-direction: column; gap: 2px; }
+
+/* ---------- centre stage ---------- */
+.stage { overflow: auto; padding: 24px 32px 32px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.stage-head { width: 100%; max-width: 560px; display: flex; align-items: center; gap: 12px; }
+.page-name { flex: 1; min-width: 0; font-size: 20px; font-weight: 600; background: transparent; border: 1px solid transparent;
+             border-radius: var(--radius-control); padding: 4px 8px; margin-left: -8px; }
+.page-name:hover { border-color: var(--line); }
+.seg { display: inline-flex; background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius-control); padding: 2px; gap: 2px; }
+.seg button { border: 0; background: transparent; color: var(--text-muted); height: 30px; padding: 0 10px; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+.seg button.on { background: var(--surface-3); color: var(--text); }
+.seg.full { display: flex; } .seg.full button { flex: 1; }
+
+.device-wrap { width: 516px; }
+.device { width: 516px; height: 356px; padding: 18px; background: #050506; border: 1px solid #2A2D30; border-radius: 22px; transform-origin: 0 0; }
+.screen { position: relative; width: 480px; height: 320px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.sbar { position: absolute; inset: 0 0 auto 0; height: 22px; background: var(--surface-2); display: flex; align-items: center;
+        padding: 0 10px; font-size: 12px; font-weight: 500; gap: 6px; }
+.sbar .host { color: var(--text-muted); font-weight: 400; }
+.sbar svg.i { width: 14px; height: 14px; color: var(--ok); }
+.cell { position: absolute; border-radius: var(--radius-tile); border: 1.5px dashed var(--line); background: transparent;
+        color: var(--text-faint); display: grid; place-items: center; cursor: pointer; font-size: 20px; }
+.cell:hover { border-color: var(--text-faint); color: var(--text-muted); }
+.tile { position: absolute; border-radius: var(--radius-tile); border: 0; padding: 10px; text-align: left; cursor: pointer; overflow: hidden;
+        display: flex; flex-direction: column; justify-content: space-between; font-size: 16px; font-weight: 500; line-height: 19px;
+        transition: transform 80ms ease-out, filter 80ms ease-out; }
+.tile:active { transform: scale(.96); filter: brightness(.8); }
+.tile .label { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+.tile svg.i { width: 20px; height: 20px; }
+.tile.soft::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--sw); }
+.tile.sel { outline: 2px solid var(--text); outline-offset: 2px; }
+.compact .tile { border-radius: 12px; font-size: 14px; line-height: 17px; padding: 8px; }
+.compact .cell { border-radius: 12px; }
+.compact .tile svg.i { width: 18px; height: 18px; }
+.pdots { position: absolute; bottom: 2px; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; }
+.pdots i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); }
+.pdots i.on { background: var(--text); }
+.hint { color: var(--text-faint); font-size: 12px; text-align: center; }
+
+/* ---------- editor sheet ---------- */
+.editor { border-left: 1px solid var(--line); background: var(--surface-2); overflow: auto; padding: 20px 20px 32px; display: flex; flex-direction: column; gap: 20px; }
+.editor > * { flex-shrink: 0; }
+.editor h2 { margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.editor h2 .sw-dot { width: 14px; height: 14px; border-radius: 4px; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field > label, .field > .lbl { font-size: 12px; color: var(--text-muted); }
+.row { display: flex; gap: 8px; align-items: center; }
+input[type=text], input[type=number], input[type=password], select, textarea {
+  width: 100%; height: 36px; padding: 0 10px; background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius-control); }
+textarea { height: 88px; padding: 8px 10px; resize: vertical; font-family: var(--mono); font-size: 13px; }
+.swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.swatch { aspect-ratio: 1; border-radius: 8px; border: 0; cursor: pointer; position: relative; }
+.swatch.on::after { content: ''; position: absolute; inset: -4px; border: 2px solid var(--text); border-radius: 11px; }
+.swatch-name { font-size: 12px; color: var(--text-faint); }
+.icons { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.icons button { height: 40px; border-radius: var(--radius-control); border: 1px solid var(--line); background: var(--surface-1); color: var(--text-muted); cursor: pointer; display: grid; place-items: center; }
+.icons button.on { border-color: var(--text); color: var(--text); background: var(--surface-3); }
+.keys { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 36px; }
+.keycap { font: 500 13px var(--mono); height: 30px; min-width: 30px; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+          background: var(--surface-3); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; }
+.keycap button { border: 0; background: none; color: var(--text-faint); cursor: pointer; padding: 0; font-size: 14px; line-height: 1; }
+.keys .plus { color: var(--text-faint); font-size: 12px; }
+.recording { border-color: var(--warn) !important; color: var(--warn); }
+.err { color: var(--error); font-size: 12px; }
+.note { color: var(--text-faint); font-size: 12px; }
+.divider { height: 1px; background: var(--line); margin: 0 -20px; }
+.editor-actions { display: flex; gap: 8px; }
+.editor-actions .btn.danger { margin-left: auto; }
+
+/* ---------- device settings view ---------- */
+.cards { width: 100%; max-width: 760px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.card { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius-panel); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.card h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.card h3 .state { margin-left: auto; font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.card h3 .state::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13px; }
+.kv dt { color: var(--text-muted); } .kv dd { margin: 0; font-family: var(--mono); font-size: 12px; text-align: right; }
+input[type=range] { width: 100%; accent-color: var(--text); }
+.json { width: 100%; max-width: 760px; }
+.json pre { margin: 0; max-height: 280px; overflow: auto; background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius-panel);
+            padding: 12px 16px; font: 12px/1.5 var(--mono); color: var(--text-muted); }
+details summary { cursor: pointer; color: var(--text-muted); font-size: 13px; padding: 4px 0; }
+
+/* ---------- toast ---------- */
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+         background: var(--surface-3); border: 1px solid var(--line); border-radius: var(--radius-control); padding: 10px 14px;
+         display: flex; align-items: center; gap: 8px; transition: all 160ms ease-out; z-index: 10; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.toast .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+
+/* ---------- phone ---------- */
+@media (max-width: 860px) {
+  .app { grid-template-rows: auto 1fr; height: auto; min-height: 100vh; }
+  header { flex-wrap: wrap; padding: 10px 16px; gap: 10px; }
+  .chips { order: 3; flex: 1 1 100%; min-width: 0; margin: 0; overflow-x: auto; }
+  main, main.no-editor { grid-template-columns: minmax(0, 1fr); align-content: start; }
+  .sidebar { border-right: 0; border-bottom: 1px solid var(--line); flex-direction: row; align-items: center; overflow-x: auto; padding: 8px 16px; gap: 8px; }
+  .stage-head { flex-wrap: wrap; }
+  .side-title { display: none; }
+  .pages-list { flex-direction: row; }
+  .nav-item { width: auto; white-space: nowrap; }
+  .nav-item .count, .nav-item .grip { display: none; }
+  .stage { padding: 16px; }
+  .editor { border-left: 0; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; padding: 16px 16px 32px; }
+  .editor::before { content: ''; align-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--line); margin-bottom: -8px; }
+  .divider { margin: 0 -16px; }
+  .cards { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><span class="brand-mark"><i></i><i></i><i></i><i></i></span>TriggerGrid</div>
+    <div class="chips">
+      <span class="chip"><span class="dot"></span>Wi-Fi <b>Home-Net</b> · triggergrid.local</span>
+      <span class="chip"><span class="dot"></span>Bluetooth <b>Desk-PC</b></span>
+    </div>
+    <div class="spacer"></div>
+    <span class="dirty" id="dirty"><span class="dot"></span>Unsaved changes</span>
+    <button class="btn primary" id="save" disabled>Save to device</button>
+  </header>
+
+  <main id="main">
+    <nav class="sidebar">
+      <div>
+        <div class="side-title">Pages</div>
+        <div class="pages-list" id="pages"></div>
+      </div>
+      <div>
+        <div class="side-title">Device</div>
+        <button class="nav-item" data-view="device"><svg class="i" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3"/><path d="M10 1.5v3M10 15.5v3M1.5 10h3M15.5 10h3M4 4l2.1 2.1M13.9 13.9 16 16M4 16l2.1-2.1M13.9 6.1 16 4"/></svg>Settings</button>
+      </div>
+    </nav>
+
+    <section class="stage" id="stage"></section>
+    <aside class="editor" id="editor"></aside>
+  </main>
+</div>
+<div class="toast" id="toast"><span class="dot"></span><span id="toast-msg"></span></div>
+
+<script>
+// ---- style-guide data -------------------------------------------------------
+const SWATCHES = {
+  graphite: ['#2C3034', 'var(--text)'],  steel:  ['#8A96A3', 'var(--on-bright)'],
+  volt:     ['#C6F432', 'var(--on-bright)'], mint: ['#3EE6A8', 'var(--on-bright)'],
+  aqua:     ['#2BD4E6', 'var(--on-bright)'], azure: ['#3D8BFF', 'var(--on-bright)'],
+  violet:   ['#9B6BFF', 'var(--on-bright)'], magenta: ['#F24FD1', 'var(--on-bright)'],
+  coral:    ['#FF5C5C', 'var(--on-bright)'], tangerine: ['#FF8A1F', 'var(--on-bright)'],
+  sun:      ['#FFD60A', 'var(--on-bright)'], crimson: ['#C8233B', 'var(--text)'],
+};
+// Grid geometry per density (style guide, "Grid densities").
+const GRID = {
+  regular: { cols: 5, rows: 3, w: 88, h: 88, gap: 6, padX: 8, padY: 6 },
+  compact: { cols: 6, rows: 4, w: 73, h: 64, gap: 6, padX: 6, padY: 7 },
+};
+const STATUS_H = 22;
+const ICONS = {
+  copy: '<rect x="6" y="6" width="11" height="11" rx="2"/><path d="M3 13V5a2 2 0 0 1 2-2h8"/>',
+  paste: '<rect x="4" y="4" width="12" height="14" rx="2"/><rect x="7" y="2" width="6" height="4" rx="1"/>',
+  mail: '<rect x="2" y="4" width="16" height="12" rx="2"/><path d="M2.5 5.5 10 11l7.5-5.5"/>',
+  undo: '<path d="M7 5 3 9l4 4"/><path d="M3 9h9a5 5 0 0 1 0 10h-2"/>',
+  playpause: '<path d="M3 4v12l8-6z" fill="currentColor"/><path d="M14 4v12M18 4v12"/>',
+  next: '<path d="M3 4v12l9-6z" fill="currentColor"/><path d="M16 4v12"/>',
+  prev: '<path d="M17 4v12L8 10z" fill="currentColor"/><path d="M4 4v12"/>',
+  volup: '<path d="M2 8h3l4-4v12l-4-4H2z"/><path d="M13 10h6M16 7v6"/>',
+  voldown: '<path d="M2 8h3l4-4v12l-4-4H2z"/><path d="M13 10h6"/>',
+  mute: '<path d="M2 8h3l4-4v12l-4-4H2z"/><path d="m13 7 6 6M19 7l-6 6"/>',
+  shot: '<path d="M2 7V4a2 2 0 0 1 2-2h3M13 2h3a2 2 0 0 1 2 2v3M18 13v3a2 2 0 0 1-2 2h-3M7 18H4a2 2 0 0 1-2-2v-3"/><circle cx="10" cy="10" r="3"/>',
+  lock: '<rect x="3" y="9" width="14" height="10" rx="2"/><path d="M6 9V6a4 4 0 0 1 8 0v3"/>',
+  code: '<path d="m7 5-5 5 5 5M13 5l5 5-5 5"/>',
+  save: '<path d="M4 2h9l4 4v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/><path d="M6 2v5h7V2M6 18v-6h8v6"/>',
+  search: '<circle cx="9" cy="9" r="6"/><path d="m13.5 13.5 4.5 4.5"/>',
+  mic: '<rect x="7" y="2" width="6" height="10" rx="3"/><path d="M4 10a6 6 0 0 0 12 0M10 16v3"/>',
+  terminal: '<rect x="2" y="3" width="16" height="14" rx="2"/><path d="m5 8 3 2-3 2M10 13h5"/>',
+  none: '',
+};
+const MEDIA_KEYS = ['PLAY_PAUSE','NEXT_TRACK','PREV_TRACK','STOP','MUTE','VOLUME_UP','VOLUME_DOWN','BRIGHTNESS_UP','BRIGHTNESS_DOWN'];
+const svg = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 20 20">${ICONS[name] || ''}</svg>`;
+
+// ---- config (docs/config-schema.md, version 1) -----------------------------
+const config = {
+  version: 1,
+  settings: { deviceName: 'TriggerGrid', density: 'regular', brightness: 180, dimAfterSec: 120 },
+  pages: [
+    { id: 'edit', name: 'Editing', tiles: [
+      { id: 'copy',  x: 0, y: 0, w: 1, h: 1, label: 'Copy',  icon: 'copy',  color: 'azure', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'C'] } },
+      { id: 'paste', x: 1, y: 0, w: 1, h: 1, label: 'Paste', icon: 'paste', color: 'azure', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'V'] } },
+      { id: 'sig',   x: 2, y: 0, w: 2, h: 1, label: 'Email sig', icon: 'mail', color: 'violet', style: 'soft', action: { type: 'text', text: 'Cheers,\nAlex', charDelayMs: 10 } },
+      { id: 'undo',  x: 4, y: 0, w: 1, h: 1, label: 'Undo',  icon: 'undo',  color: 'graphite', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'Z'] } },
+      { id: 'play',  x: 0, y: 1, w: 2, h: 2, label: 'Play / Pause', icon: 'playpause', color: 'volt', style: 'solid', action: { type: 'media', key: 'PLAY_PAUSE' } },
+      { id: 'volup', x: 2, y: 1, w: 1, h: 1, label: 'Vol +', icon: 'volup', color: 'mint', style: 'solid', action: { type: 'media', key: 'VOLUME_UP' } },
+      { id: 'mute',  x: 3, y: 1, w: 1, h: 1, label: 'Mute',  icon: 'mute',  color: 'coral', style: 'soft', action: { type: 'media', key: 'MUTE' } },
+      { id: 'shot',  x: 4, y: 1, w: 1, h: 2, label: 'Screen shot', icon: 'shot', color: 'sun', style: 'solid', action: { type: 'keys', keys: ['GUI', 'SHIFT', 'S'] } },
+      { id: 'voldn', x: 2, y: 2, w: 1, h: 1, label: 'Vol −', icon: 'voldown', color: 'mint', style: 'solid', action: { type: 'media', key: 'VOLUME_DOWN' } },
+      { id: 'lock',  x: 3, y: 2, w: 1, h: 1, label: 'Lock',  icon: 'lock',  color: 'crimson', style: 'solid', action: { type: 'keys', keys: ['GUI', 'L'] } },
+    ]},
+    { id: 'media', name: 'Media', tiles: [
+      { id: 'prev', x: 0, y: 0, w: 1, h: 1, label: 'Prev', icon: 'prev', color: 'aqua', style: 'soft', action: { type: 'media', key: 'PREV_TRACK' } },
+      { id: 'pp',   x: 1, y: 0, w: 2, h: 2, label: 'Play / Pause', icon: 'playpause', color: 'magenta', style: 'solid', action: { type: 'media', key: 'PLAY_PAUSE' } },
+      { id: 'next', x: 3, y: 0, w: 1, h: 1, label: 'Next', icon: 'next', color: 'aqua', style: 'soft', action: { type: 'media', key: 'NEXT_TRACK' } },
+      { id: 'mic',  x: 4, y: 0, w: 1, h: 1, label: 'Mic mute', icon: 'mic', color: 'coral', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'SHIFT', 'M'] } },
+      { id: 'vdn',  x: 0, y: 1, w: 1, h: 1, label: 'Vol −', icon: 'voldown', color: 'graphite', style: 'solid', action: { type: 'media', key: 'VOLUME_DOWN' } },
+      { id: 'vup',  x: 3, y: 1, w: 1, h: 1, label: 'Vol +', icon: 'volup', color: 'graphite', style: 'solid', action: { type: 'media', key: 'VOLUME_UP' } },
+    ]},
+    { id: 'code', name: 'Code', tiles: [
+      { id: 'term',  x: 0, y: 0, w: 2, h: 1, label: 'Terminal', icon: 'terminal', color: 'steel', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'GRAVE'] } },
+      { id: 'find',  x: 2, y: 0, w: 1, h: 1, label: 'Find', icon: 'search', color: 'tangerine', style: 'soft', action: { type: 'keys', keys: ['CTRL', 'SHIFT', 'F'] } },
+      { id: 'build', x: 3, y: 0, w: 2, h: 1, label: 'PIO build', icon: 'code', color: 'volt', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'ALT', 'B'] } },
+      { id: 'save',  x: 0, y: 1, w: 1, h: 1, label: 'Save', icon: 'save', color: 'violet', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'S'] } },
+    ]},
+  ],
+};
+
+// ---- state ------------------------------------------------------------------
+const state = { view: location.hash === '#settings' ? 'device' : 'layout', page: 0, tile: 'copy', recording: false, dirty: false };
+const $ = (id) => document.getElementById(id);
+const page = () => config.pages[state.page];
+const tile = () => page().tiles.find(t => t.id === state.tile);
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function markDirty() { state.dirty = true; $('dirty').classList.add('on'); $('save').disabled = false; }
+let toastTimer;
+function toast(msg, color = 'var(--ok)') {
+  $('toast-msg').textContent = msg; $('toast').querySelector('.dot').style.background = color;
+  $('toast').classList.add('on'); clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('toast').classList.remove('on'), 2200);
+}
+
+// Grid rules from config-schema.md: fits inside the grid, no overlaps.
+function fitError(t, pg = page()) {
+  const g = GRID[config.settings.density];
+  if (t.x + t.w > g.cols || t.y + t.h > g.rows) return `Doesn't fit: the ${config.settings.density} grid is ${g.cols}×${g.rows}.`;
+  const hit = pg.tiles.find(o => o !== t && t.x < o.x + o.w && o.x < t.x + t.w && t.y < o.y + o.h && o.y < t.y + t.h);
+  return hit ? `Overlaps “${hit.label}”. Move one of them first.` : '';
+}
+
+// ---- sidebar ---------------------------------------------------------------
+function renderSidebar() {
+  $('pages').innerHTML = config.pages.map((p, i) => `
+    <button class="nav-item ${state.view === 'layout' && i === state.page ? 'active' : ''}" data-page="${i}">
+      <svg class="i grip" viewBox="0 0 20 20"><path d="M7 5h.01M7 10h.01M7 15h.01M13 5h.01M13 10h.01M13 15h.01" stroke-width="2.6"/></svg>
+      ${esc(p.name)}<span class="count">${p.tiles.length}</span></button>`).join('') +
+    `<button class="nav-item add" id="add-page"><svg class="i" viewBox="0 0 20 20"><path d="M10 4v12M4 10h12"/></svg>Add page</button>`;
+  document.querySelector('[data-view="device"]').classList.toggle('active', state.view === 'device');
+}
+
+// ---- preview ---------------------------------------------------------------
+function tileRect(t, g) {
+  return { left: g.padX + t.x * (g.w + g.gap), top: STATUS_H + g.padY + t.y * (g.h + g.gap),
+           width: t.w * g.w + (t.w - 1) * g.gap, height: t.h * g.h + (t.h - 1) * g.gap };
+}
+function px(r) { return Object.entries(r).map(([k, v]) => `${k}:${v}px`).join(';'); }
+
+function renderPreview() {
+  const g = GRID[config.settings.density], pg = page();
+  const used = new Set();
+  pg.tiles.forEach(t => { for (let x = t.x; x < t.x + t.w; x++) for (let y = t.y; y < t.y + t.h; y++) used.add(x + ',' + y); });
+  let cells = '';
+  for (let y = 0; y < g.rows; y++) for (let x = 0; x < g.cols; x++)
+    if (!used.has(x + ',' + y)) cells += `<button class="cell" data-cell="${x},${y}" title="Add tile" style="${px(tileRect({ x, y, w: 1, h: 1 }, g))}">+</button>`;
+  const tiles = pg.tiles.map(t => {
+    const [sw, on] = SWATCHES[t.color] || SWATCHES.graphite;
+    const soft = t.style === 'soft';
+    const bg = soft ? `color-mix(in srgb, ${sw} 16%, var(--surface-1))` : sw;
+    const fg = soft ? 'var(--text)' : on, ic = soft ? sw : on;
+    const small = config.settings.density === 'compact' && t.w === 1 && t.h === 1 && t.icon && t.icon !== 'none';
+    return `<button class="tile ${soft ? 'soft' : ''} ${t.id === state.tile ? 'sel' : ''}" data-tile="${t.id}"
+      style="${px(tileRect(t, g))};background:${bg};color:${fg};--sw:${sw}">
+      ${small ? '<span></span>' : `<span class="label">${esc(t.label)}</span>`}
+      <span style="color:${ic}">${svg(t.icon)}</span></button>`;
+  }).join('');
+  return `
+    <div class="device-wrap" id="device-wrap"><div class="device" id="device">
+      <div class="screen ${config.settings.density}">
+        <div class="sbar"><span>${esc(pg.name)}</span><span class="spacer"></span>
+          <svg class="i" viewBox="0 0 20 20"><path d="M3 8a10 10 0 0 1 14 0M6 11a6 6 0 0 1 8 0"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+          <svg class="i" viewBox="0 0 20 20"><path d="m5 6 9 8-4 3.5v-15L14 6l-9 8"/></svg>
+          <span class="host">Desk-PC</span></div>
+        ${cells}${tiles}
+        ${config.pages.length > 1 ? `<div class="pdots">${config.pages.map((_, i) => `<i class="${i === state.page ? 'on' : ''}"></i>`).join('')}</div>` : ''}
+      </div></div></div>`;
+}
+
+// Scale the 1:1 device preview down only when the stage is narrower than it.
+function fitDevice() {
+  const wrap = $('device-wrap'), dev = $('device');
+  if (!wrap) return;
+  const s = Math.min(1, wrap.parentElement.clientWidth / 516);
+  dev.style.transform = `scale(${s})`;
+  const note = $('scale-note'); if (note) note.textContent = s < 1 ? `Scaled to ${Math.round(s * 100)}%.` : 'Actual size.'; wrap.style.width = 516 * s + 'px'; wrap.style.height = 356 * s + 'px';
+}
+
+// ---- layout view -----------------------------------------------------------
+function renderLayout() {
+  const d = config.settings.density;
+  $('stage').innerHTML = `
+    <div class="stage-head">
+      <input class="page-name" id="page-name" value="${esc(page().name)}" maxlength="20" aria-label="Page name">
+      <div class="seg" role="group" aria-label="Grid density">
+        <button data-density="regular" class="${d === 'regular' ? 'on' : ''}">Regular 5×3</button>
+        <button data-density="compact" class="${d === 'compact' ? 'on' : ''}">Compact 6×4</button>
+      </div>
+    </div>
+    ${renderPreview()}
+    <div class="hint"><span id="scale-note">Actual size.</span> Tap a tile to edit it, or <b>+</b> to add one. Drag to move (M9).</div>
+    <details class="json"><summary>config.json for this page</summary><pre>${esc(JSON.stringify(page(), null, 2))}</pre></details>`;
+  fitDevice();
+}
+
+function renderEditor() {
+  const t = tile();
+  if (!t) {
+    $('editor').innerHTML = `<h2>No tile selected</h2><p class="note">Tap a tile in the preview to edit it, or tap an empty <b>+</b> cell to add a tile there.</p>`;
+    return;
+  }
+  const a = t.action, err = fitError(t);
+  const actionFields = {
+    keys: `
+      <div class="field"><span class="lbl">Key combo</span>
+        <div class="keys">${a.keys.map((k, i) => `${i ? '<span class="plus">+</span>' : ''}<span class="keycap">${esc(k)}<button data-delkey="${i}" aria-label="Remove ${esc(k)}">×</button></span>`).join('')}</div>
+        <div class="row"><button class="btn small ${state.recording ? 'recording' : ''}" id="record">
+          <svg class="i" viewBox="0 0 20 20"><circle cx="10" cy="10" r="4" fill="currentColor" stroke="none"/></svg>
+          ${state.recording ? 'Press a key combo…' : 'Record combo'}</button>
+          <span class="note">US layout key positions</span></div></div>`,
+    text: `
+      <div class="field"><label for="f-text">Text to type</label>
+        <textarea id="f-text" maxlength="1024">${esc(a.text || '')}</textarea>
+        <span class="note">${(a.text || '').length} / 1024 · printable ASCII, Enter and Tab</span></div>
+      <div class="field"><label for="f-delay">Delay between characters (ms)</label>
+        <input type="number" id="f-delay" min="5" max="100" value="${a.charDelayMs ?? 10}"></div>`,
+    media: `
+      <div class="field"><label for="f-media">Media key</label>
+        <select id="f-media">${MEDIA_KEYS.map(k => `<option ${k === a.key ? 'selected' : ''}>${k}</option>`).join('')}</select></div>`,
+  }[a.type];
+
+  $('editor').innerHTML = `
+    <h2><span class="sw-dot" style="background:${SWATCHES[t.color][0]}"></span>Edit tile</h2>
+    <div class="field"><label for="f-label">Label</label>
+      <input type="text" id="f-label" maxlength="24" value="${esc(t.label)}"></div>
+    <div class="field"><span class="lbl">Colour <span class="swatch-name">· ${t.color}</span></span>
+      <div class="swatches">${Object.entries(SWATCHES).map(([n, [c]]) =>
+        `<button class="swatch ${n === t.color ? 'on' : ''}" data-color="${n}" title="${n}" aria-label="${n}" style="background:${c}"></button>`).join('')}</div></div>
+    <div class="field"><span class="lbl">Style</span>
+      <div class="seg full"><button data-style="solid" class="${t.style !== 'soft' ? 'on' : ''}">Solid</button><button data-style="soft" class="${t.style === 'soft' ? 'on' : ''}">Soft</button></div></div>
+    <div class="field"><span class="lbl">Size</span>
+      <div class="seg full">${[[1,1],[2,1],[1,2],[2,2]].map(([w,h]) => `<button data-size="${w},${h}" class="${t.w === w && t.h === h ? 'on' : ''}">${w}×${h}</button>`).join('')}</div>
+      ${err ? `<span class="err">${esc(err)}</span>` : ''}</div>
+    <div class="field"><span class="lbl">Icon</span>
+      <div class="icons">${Object.keys(ICONS).map(n => `<button data-icon="${n}" class="${(t.icon || 'none') === n ? 'on' : ''}" title="${n}">${n === 'none' ? '<span class="note">none</span>' : svg(n)}</button>`).join('')}</div></div>
+    <div class="divider"></div>
+    <div class="field"><span class="lbl">Action</span>
+      <div class="seg full">${['keys', 'text', 'media'].map(k => `<button data-atype="${k}" class="${a.type === k ? 'on' : ''}">${{ keys: 'Key combo', text: 'Type text', media: 'Media key' }[k]}</button>`).join('')}</div></div>
+    ${actionFields}
+    <div class="editor-actions">
+      <button class="btn" id="try"><svg class="i" viewBox="0 0 20 20"><path d="M5 3v14l11-7z"/></svg>Try it</button>
+      <button class="btn danger" id="delete">Delete tile</button>
+    </div>`;
+}
+
+// ---- device settings view -------------------------------------------------
+function renderDevice() {
+  const s = config.settings;
+  $('stage').innerHTML = `
+    <div class="stage-head" style="max-width:760px"><h1 class="page-name" style="border:0;margin:0;padding:0">Device settings</h1></div>
+    <div class="cards">
+      <div class="card"><h3>Display</h3>
+        <div class="field"><span class="lbl">Grid density</span>
+          <div class="seg full"><button data-density="regular" class="${s.density === 'regular' ? 'on' : ''}">Regular 5×3</button><button data-density="compact" class="${s.density === 'compact' ? 'on' : ''}">Compact 6×4</button></div></div>
+        <div class="field"><label for="f-bright">Brightness <span class="swatch-name">· ${s.brightness}</span></label>
+          <input type="range" id="f-bright" min="10" max="255" value="${s.brightness}"></div>
+        <div class="field"><label for="f-dim">Dim after</label>
+          <select id="f-dim">${[[0,'Never'],[30,'30 seconds'],[60,'1 minute'],[120,'2 minutes'],[300,'5 minutes']].map(([v,l]) => `<option value="${v}" ${v === s.dimAfterSec ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      </div>
+      <div class="card"><h3>Wi-Fi<span class="state" style="color:var(--ok)">Connected</span></h3>
+        <dl class="kv"><dt>Network</dt><dd>Home-Net</dd><dt>Address</dt><dd>triggergrid.local</dd><dt>IP</dt><dd>192.168.1.42</dd><dt>Signal</dt><dd>−58 dBm</dd></dl>
+        <div class="row"><button class="btn small" data-toast="Scanning for networks…">Change network</button><button class="btn small" data-toast="Setup hotspot will start on reboot">Use setup hotspot</button></div>
+        <span class="note">The setup hotspot is TriggerGrid-7F3A. Its password and QR code are in the device menu on the pad.</span>
+      </div>
+      <div class="card"><h3>Bluetooth<span class="state" style="color:var(--ok)">Connected</span></h3>
+        <dl class="kv"><dt>Name</dt><dd>${esc(s.deviceName)}</dd><dt>Paired with</dt><dd>Desk-PC</dd></dl>
+        <div class="field"><label for="f-name">Device name</label><input type="text" id="f-name" maxlength="24" value="${esc(s.deviceName)}"></div>
+        <div class="row"><button class="btn small danger" data-toast="Bluetooth pairing cleared" data-color="var(--warn)">Forget paired computer</button></div>
+      </div>
+      <div class="card"><h3>Security<span class="state" style="color:var(--warn)">No PIN</span></h3>
+        <span class="note">Anyone on your network can change what this pad types. Set a PIN to protect the settings page.</span>
+        <div class="field"><label for="f-pin">Web PIN</label><input type="password" id="f-pin" inputmode="numeric" placeholder="4–8 digits"></div>
+        <div class="row"><button class="btn small" data-toast="PIN set">Set PIN</button></div>
+      </div>
+      <div class="card"><h3>Backup</h3>
+        <span class="note">The layout file holds pages, tiles and settings. Wi-Fi passwords and the PIN are never included.</span>
+        <div class="row"><button class="btn small" data-toast="Downloaded config.json">Export config.json</button><button class="btn small" data-toast="Choose a file…">Import</button></div>
+      </div>
+      <div class="card"><h3>About</h3>
+        <dl class="kv"><dt>Firmware</dt><dd>0.1.0 (M8)</dd><dt>Uptime</dt><dd>3 h 12 m</dd><dt>Free heap</dt><dd>142 KB</dd><dt>Free PSRAM</dt><dd>7.2 MB</dd></dl>
+        <div class="row"><button class="btn small" data-toast="Rebooting…" data-color="var(--warn)">Reboot</button><button class="btn small" data-toast="Checking for firmware…">Update firmware</button></div>
+      </div>
+    </div>`;
+}
+
+function render() {
+  renderSidebar();
+  $('main').classList.toggle('no-editor', state.view !== 'layout');
+  if (state.view === 'layout') { renderLayout(); renderEditor(); } else renderDevice();
+}
+
+// ---- events ----------------------------------------------------------------
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('button'); if (!el) return;
+  const d = el.dataset, t = tile();
+  if (d.page) { state.view = 'layout'; state.page = +d.page; state.tile = page().tiles[0]?.id; state.recording = false; return render(); }
+  if (d.view) { state.view = d.view; return render(); }
+  if (el.id === 'add-page') { config.pages.push({ id: 'page' + config.pages.length, name: 'New page', tiles: [] }); state.view = 'layout'; state.page = config.pages.length - 1; state.tile = null; markDirty(); return render(); }
+  if (d.tile) { state.tile = d.tile; state.recording = false; return render(); }
+  if (d.cell) {
+    const [x, y] = d.cell.split(',').map(Number), id = 't' + Date.now().toString(36);
+    page().tiles.push({ id, x, y, w: 1, h: 1, label: 'New', icon: 'none', color: 'graphite', style: 'solid', action: { type: 'keys', keys: ['F13'] } });
+    state.tile = id; markDirty(); return render();
+  }
+  if (d.density) { config.settings.density = d.density; markDirty(); return render(); }
+  if (d.color) { t.color = d.color; markDirty(); return render(); }
+  if (d.style) { t.style = d.style; markDirty(); return render(); }
+  if (d.icon) { t.icon = d.icon; markDirty(); return render(); }
+  if (d.size) { [t.w, t.h] = d.size.split(',').map(Number); markDirty(); return render(); }
+  if (d.atype && d.atype !== t.action.type) {
+    t.action = { keys: { type: 'keys', keys: ['F13'] }, text: { type: 'text', text: '', charDelayMs: 10 }, media: { type: 'media', key: 'PLAY_PAUSE' } }[d.atype];
+    markDirty(); return render();
+  }
+  if (d.delkey) { t.action.keys.splice(+d.delkey, 1); markDirty(); return render(); }
+  if (el.id === 'record') { state.recording = !state.recording; return renderEditor(); }
+  if (el.id === 'try') return toast(`Sent “${t.label}” to Desk-PC`);
+  if (el.id === 'delete') { page().tiles = page().tiles.filter(o => o !== t); state.tile = null; markDirty(); return render(); }
+  if (el.id === 'save') {
+    const bad = config.pages.flatMap(p => p.tiles.filter(x => fitError(x, p)).map(x => `${p.name}: ${x.label}`));
+    if (bad.length) return toast(`Can't save: ${bad[0]} doesn't fit`, 'var(--error)');
+    state.dirty = false; $('dirty').classList.remove('on'); $('save').disabled = true; return toast('Saved. The pad has updated.');
+  }
+  if (d.toast) return toast(d.toast, d.color);
+});
+
+document.addEventListener('input', (e) => {
+  const t = tile(), v = e.target.value;
+  switch (e.target.id) {
+    case 'f-label': t.label = v; break;
+    case 'f-text': t.action.text = v; break;
+    case 'f-delay': t.action.charDelayMs = +v; break;
+    case 'f-media': t.action.key = v; break;
+    case 'page-name': page().name = v; break;
+    case 'f-bright': config.settings.brightness = +v; e.target.previousElementSibling.querySelector('.swatch-name').textContent = '· ' + v; markDirty(); return;
+    case 'f-dim': config.settings.dimAfterSec = +v; markDirty(); return;
+    case 'f-name': config.settings.deviceName = v; markDirty(); return;
+    default: return;
+  }
+  markDirty();
+  // Update the preview without re-rendering the field being typed in.
+  renderSidebar();
+  const stage = $('stage').querySelector('.device-wrap');
+  if (stage) { stage.outerHTML = renderPreview(); fitDevice(); }
+  const pre = $('stage').querySelector('pre'); if (pre) pre.textContent = JSON.stringify(page(), null, 2);
+});
+
+// "Record combo": capture modifiers + one key and map to config-schema key names.
+const CODE_NAMES = { Enter: 'ENTER', Escape: 'ESC', Tab: 'TAB', Space: 'SPACE', Backspace: 'BACKSPACE', Delete: 'DELETE',
+  Insert: 'INSERT', Home: 'HOME', End: 'END', PageUp: 'PAGE_UP', PageDown: 'PAGE_DOWN', ArrowUp: 'UP', ArrowDown: 'DOWN',
+  ArrowLeft: 'LEFT', ArrowRight: 'RIGHT', Minus: 'MINUS', Equal: 'EQUAL', BracketLeft: 'LBRACKET', BracketRight: 'RBRACKET',
+  Backslash: 'BACKSLASH', Semicolon: 'SEMICOLON', Quote: 'QUOTE', Backquote: 'GRAVE', Comma: 'COMMA', Period: 'PERIOD', Slash: 'SLASH',
+  PrintScreen: 'PRINT_SCREEN', CapsLock: 'CAPS_LOCK' };
+document.addEventListener('keydown', (e) => {
+  if (!state.recording) return;
+  if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;   // wait for the non-modifier key
+  e.preventDefault();
+  const name = /^Key[A-Z]$/.test(e.code) ? e.code.slice(3) : /^Digit\d$/.test(e.code) ? e.code.slice(5)
+             : /^F\d{1,2}$/.test(e.code) ? e.code : CODE_NAMES[e.code];
+  if (!name) return toast(`${e.code} isn't supported`, 'var(--error)');
+  const keys = [];
+  if (e.ctrlKey) keys.push('CTRL'); if (e.shiftKey) keys.push('SHIFT'); if (e.altKey) keys.push('ALT'); if (e.metaKey) keys.push('GUI');
+  tile().action.keys = [...keys, name]; state.recording = false; markDirty(); render();
+});
+
+window.addEventListener('resize', fitDevice);
+render();
+</script>
+</body>
+</html>
