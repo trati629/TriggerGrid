@@ -3,6 +3,7 @@
 
 #include "power.h"
 
+#include <Arduino.h>
 #include <lvgl.h>
 
 #include "display/display.h"
@@ -46,9 +47,11 @@ void power_update() {
     if (s_screen == Screen::Awake && idle >= s_dim_after_ms) {
         s_screen = Screen::Dimmed;
         display_set_brightness(dim_level());
+        Serial.printf("power: dimmed after %lu s idle\n", (unsigned long)(idle / 1000));
     } else if (s_screen == Screen::Dimmed && idle >= s_dim_after_ms + OFF_AFTER_DIM_MS) {
         s_screen = Screen::Off;
         display_set_brightness(0);
+        Serial.println("power: screen off");
     } else if (s_screen != Screen::Awake && idle < s_dim_after_ms) {
         power_wake();   // a touch LVGL saw while dimmed
     }
@@ -59,7 +62,17 @@ bool power_screen_off() {
 }
 
 void power_wake() {
+    if (s_screen != Screen::Awake) {
+        Serial.println("power: awake");
+    }
     s_screen = Screen::Awake;
     display_set_brightness(s_level);
     lv_display_trigger_activity(nullptr);
+}
+
+void power_log_status() {
+    const char* state = s_screen == Screen::Awake ? "awake" : s_screen == Screen::Dimmed ? "dimmed" : "off";
+    Serial.printf("power: %s, idle %lu s, dims after %lu s%s\n", state,
+                  (unsigned long)(lv_display_get_inactive_time(nullptr) / 1000),
+                  (unsigned long)(s_dim_after_ms / 1000), s_dim_after_ms ? "" : " (never)");
 }

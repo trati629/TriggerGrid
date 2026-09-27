@@ -157,5 +157,6 @@ void loop() {
                       (unsigned long)s.refresh_us, (unsigned long)s.transpose_us, (unsigned long)s.push_us,
                       (unsigned long)s.frames, (unsigned long)ESP.getFreeHeap(),
                       (unsigned long)ESP.getFreePsram());
+        power_log_status();
     }
 }
