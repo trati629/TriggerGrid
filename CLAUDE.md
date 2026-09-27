@@ -24,7 +24,13 @@ pio run -t upload          # flash
 pio device monitor         # serial, 115200
 pio run -t uploadfs        # flash data/ (default config.json) to LittleFS
 pio run -t clean           # after changing any shared header (hardware doc §P7)
+pio test -e native         # firmware unit tests on the PC (needs gcc, see below)
+node tools/test_web.js     # browser compiler tests (or open web/test.html)
+node tools/make_default_config.js   # rewrite data/config.json from web/lib/default-layout.js
 ```
+
+`pio test -e native` needs `gcc`/`g++` on the PATH. On Windows, PlatformIO's own MinGW works:
+`$env:PATH = "$env:USERPROFILE\.platformio\packages	oolchain-gccmingw32in;$env:PATH"`.
 
 Nothing can be flashed or observed from a cloud session. After hardware-facing changes, say what
 the user should look for on the device and on serial.

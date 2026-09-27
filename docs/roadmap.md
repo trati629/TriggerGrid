@@ -90,7 +90,7 @@ Status key: ✅ done · 🧪 written and builds, not yet checked on the board ·
   core 0; each job carries its own copy of the keystroke list). The built-in layout already uses real
   codes, so every tile is live.
 
-## ⬜ M6 — Layout compiler and pad reader
+## 🧪 M6 — Layout compiler and pad reader
 
 This milestone has two halves. The browser half needs no hardware.
 
@@ -105,6 +105,12 @@ This milestone has two halves. The browser half needs no hardware.
   struct in PSRAM, run the bounds checks, and fall back to the built-in default.
 - UI builds its pages from `Pad` instead of hard-coded data.
 - Native unit tests in `test/` for the bounds checks (`pio test -e native`).
+- Built: `web/lib/` (swatches, icons, keymap, layouts/us, unicode, validate, compile,
+  default-layout), `web/test.html` + `web/test.js` (29 known-answer tests, also run by
+  `node tools/test_web.js`), `tools/make_default_config.js` (writes `data/config.json`),
+  `src/config/pad_parse.cpp` (bounds checks, Arduino-free) and `config.cpp` (LittleFS, PSRAM JSON,
+  fallback). `test/test_pad` (14 native tests) also checks that `data/config.json` matches the
+  built-in layout in `defaults.cpp`.
 - **Done when:** the compiler tests pass in the browser; flashing a compiled `data/config.json`
   with `uploadfs` changes the pad's layout; and a corrupted or oversized file shows a status-bar
   warning instead of crashing.

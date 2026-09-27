@@ -1,8 +1,8 @@
 // TriggerGrid — touchscreen BLE macro pad for the Guition JC3248W535.
 //
 // Entry point. Each module listed in docs/architecture.md is brought up in
-// order by the milestones in docs/roadmap.md. M5: tiles send their actions
-// over Bluetooth.
+// order by the milestones in docs/roadmap.md. M6: the layout comes from
+// /config.json, compiled by the browser.
 
 #include <Arduino.h>
 #include "actions/actions.h"
@@ -31,6 +31,14 @@ static bool on_tile_tap(const PadTile& tile) {
     Serial.printf("tap: %s (%s)\n", tile.label,
                   sent ? "sent" : "not sent: Bluetooth not connected");
     return sent;
+}
+
+// Draw the current layout, with a status-bar warning if /config.json was
+// rejected (the full reason is on serial).
+static void show_layout() {
+    const Pad& pad = config_pad();
+    ui_build(pad);
+    ui_set_warning(config_warning() ? "Layout error: built-in used" : nullptr);
 }
 
 // Show the Bluetooth state in the status bar whenever it changes.
@@ -80,7 +88,7 @@ void setup() {
     }
     const Pad& pad = config_pad();
     ui_on_tile_tap(on_tile_tap);
-    ui_build(pad);
+    show_layout();
 
     if (!actions_init()) {
         halt("actions: could not start the action task");
@@ -98,6 +106,14 @@ void setup() {
 void loop() {
     lvgl_glue_update();
     update_ble_status();
+
+    // A new config.json was saved: reload it and rebuild the screens at once
+    // (the UI points into the Pad, see config_reload()).
+    if (config_take_dirty()) {
+        config_reload();
+        show_layout();
+        display_set_brightness(config_pad().brightness);
+    }
 
     static uint32_t last_stats = 0;
     if (millis() - last_stats >= STATS_PERIOD_MS) {
