@@ -22,3 +22,6 @@ bool power_screen_off();
 
 // Back to the normal level, and count this as activity.
 void power_wake();
+
+// One line on serial: state, idle time and the dim setting (for debugging).
+void power_log_status();
