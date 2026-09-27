@@ -22,7 +22,7 @@ constexpr int8_t  PIN_TOUCH_RST  = 12;
 constexpr uint8_t TOUCH_I2C_ADDR = 0x3B;
 
 // Panel geometry. The panel is portrait-native; the enclosure is landscape.
-// LVGL renders landscape and display code transposes (hardware.md, Solution 4).
+// LVGL renders landscape and display code transposes (hardware doc, Solution 4).
 constexpr int16_t PANEL_W = 320;   // physical
 constexpr int16_t PANEL_H = 480;   // physical
 constexpr int16_t SCREEN_W = 480;  // logical (LVGL, touch, UI layout)

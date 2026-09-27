@@ -10,13 +10,15 @@
 #ifndef LV_CONF_H
 #define LV_CONF_H
 
-#define LV_COLOR_DEPTH 16            // RGB565, matches the panel
+// RGB565, matches the panel. LVGL ≥ 9.5 derives LV_COLOR_DEPTH from this;
+// defining LV_COLOR_DEPTH directly is deprecated.
+#define LV_COLOR_FORMAT_DEFAULT LV_COLOR_FORMAT_RGB565
 
 // Memory: LVGL's own heap. Frame buffers are allocated separately in PSRAM.
 #define LV_MEM_SIZE (96U * 1024U)
 
 // Ticks are driven manually from loop() with lv_tick_inc() — see
-// hardware.md §P8. Do not rely on a custom tick source.
+// hardware doc §P8. Do not rely on a custom tick source.
 
 #define LV_DEF_REFR_PERIOD 16        // ~60 fps target; full-frame transpose caps it lower
 
