@@ -55,7 +55,7 @@ touch code.
 4. PlatformIO sidebar → *guition-jc3248w535* → **Upload and Monitor**.
 5. You should see:
    ```
-   TriggerGrid 0.10.0
+   TriggerGrid 1.0.0
      Chip:  ESP32-S3 rev 0, 2 cores @ 240 MHz
      Flash: 16384 KB
      PSRAM: 8192 KB (ok)
