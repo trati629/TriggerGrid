@@ -22,7 +22,7 @@ Read before working:
 pio run                    # build
 pio run -t upload          # flash
 pio device monitor         # serial, 115200
-pio run -t uploadfs        # flash data/ to LittleFS
+pio run -t uploadfs        # flash data/ (default config.json) to LittleFS
 pio run -t clean           # after changing any shared header (hardware doc §P7)
 ```
 
@@ -47,14 +47,22 @@ the user should look for on the device and on serial.
 
 ## Code conventions
 
-- GPIO numbers live only in `include/board_pins.h`. Colours live only in `src/ui/theme.h`.
+- GPIO numbers live only in `include/board_pins.h`. UI chrome colours (background, status bar,
+  menus) live only in `src/ui/theme.h`. Tile swatches live only in `web/lib/` and reach the
+  firmware as compiled RGB values in `pad`.
 - One folder per module under `src/`; a small `module.h` with `module_init()`-style functions.
   No module includes another module's `.cpp` internals.
 - **Only `loop()` touches LVGL.** Other tasks communicate by queue or flag.
 - No `delay()` in `loop()` after boot. Long work goes in the `actions` task.
 - C++17, Arduino types are fine. Prefer `constexpr` over `#define` for constants.
 - Comment the *why*, especially for workarounds, and link the hardware doc section (`// see hardware doc §P5`).
-- Web UI in `data/`: plain HTML/CSS/JS, no framework, no build step, no CDN.
+- **Thin device, smart browser** (architecture.md). The firmware stores, streams and acts. Key
+  names, colour names, keyboard layouts, validation and anything that builds or parses the
+  `editor` section belong in `web/`, never in `src/`. The firmware reads only the compiled `pad`
+  section and does range checks on it.
+- Web requests never touch LVGL, never block on BLE, and never compress or template on the device.
+- Web UI in `web/`: plain HTML/CSS/JS, no framework, no bundler, no CDN. The only build step is
+  the gzip-and-embed script PlatformIO runs.
 
 ## Style (UI)
 

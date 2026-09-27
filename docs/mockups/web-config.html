@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TriggerGrid config — mockup</title>
+<!--
+  Design mockup of the device's web config page (roadmap M8/M9).
+  Self-contained: no CDN, no build step — the same rules as the real page in data/.
+  Data follows docs/config-schema.md; tokens and grid numbers follow docs/style-guide.md.
+  Nothing talks to a device: Save / Try it / Wi-Fi actions only show a toast.
+-->
+<style>
+:root {
+  --bg: #101112; --surface-1: #1A1C1E; --surface-2: #24272A; --surface-3: #2E3236;
+  --line: #383C41; --text: #F2F3F4; --text-muted: #A0A6AC; --text-faint: #62696F;
+  --on-bright: #0E0F10; --ok: #3DDC84; --warn: #FFB224; --error: #FF4D4F; --link: #5AA9FF;
+  --radius-tile: 14px; --radius-panel: 12px; --radius-control: 8px;
+  --font: 'Space Grotesk', 'Segoe UI', system-ui, -apple-system, Helvetica, Arial, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, 'DejaVu Sans Mono', monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 400 14px/1.45 var(--font); }
+button, input, select, textarea { font: inherit; color: inherit; }
+svg.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8;
+        stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* ---------- app shell ---------- */
+.app { display: grid; grid-template-rows: 56px 1fr; grid-template-columns: minmax(0, 1fr); height: 100vh; }
+header { display: flex; align-items: center; gap: 16px; padding: 0 16px;
+         border-bottom: 1px solid var(--line); background: var(--bg); }
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; letter-spacing: .2px; }
+.brand-mark { width: 22px; height: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+.brand-mark i { border-radius: 3px; background: var(--text); }
+.brand-mark i:nth-child(2) { background: #C6F432; } .brand-mark i:nth-child(3) { background: #3D8BFF; }
+.chips { display: flex; gap: 8px; margin-left: 8px; }
+.chip { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px;
+        background: var(--surface-1); border: 1px solid var(--line); color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+.chip b { color: var(--text); font-weight: 500; }
+.spacer { flex: 1; }
+.dirty { display: none; align-items: center; gap: 6px; color: var(--warn); font-size: 13px; }
+.dirty.on { display: flex; }
+.dirty .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+
+.btn { height: 36px; padding: 0 14px; border-radius: var(--radius-control); border: 1px solid var(--line);
+       background: transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.btn:hover { background: var(--surface-3); }
+.btn.primary { background: var(--text); color: var(--on-bright); border-color: var(--text); font-weight: 600; }
+.btn.primary:hover { background: #FFFFFF; }
+.btn.primary:disabled { background: var(--surface-3); color: var(--text-faint); border-color: var(--surface-3); cursor: default; }
+.btn.danger { color: var(--error); }
+.btn.small { height: 30px; padding: 0 10px; font-size: 13px; }
+.btn:focus-visible, .seg button:focus-visible, .swatch:focus-visible, .tile:focus-visible,
+.nav-item:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--text); outline-offset: 2px; }
+
+main { display: grid; grid-template-columns: 232px 1fr 360px; min-height: 0; }
+main.no-editor { grid-template-columns: 232px 1fr; }
+main > * { min-width: 0; }   /* let the stage shrink so the preview can scale to fit */
+main.no-editor .editor { display: none; }
+
+/* ---------- sidebar ---------- */
+.sidebar { border-right: 1px solid var(--line); padding: 16px 12px; overflow: auto; display: flex; flex-direction: column; gap: 24px; }
+.side-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-faint); padding: 0 8px 8px; }
+.nav-item { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: var(--radius-control);
+            border: 0; background: transparent; color: var(--text-muted); cursor: pointer; text-align: left; }
+.nav-item:hover { background: var(--surface-1); color: var(--text); }
+.nav-item.active { background: var(--surface-2); color: var(--text); }
+.nav-item .count { margin-left: auto; font-size: 12px; color: var(--text-faint); }
+.nav-item .grip { color: var(--text-faint); }
+.nav-item.add { color: var(--text-faint); }
+.pages-list { display: flex; flex-direction: column; gap: 2px; }
+
+/* ---------- centre stage ---------- */
+.stage { overflow: auto; padding: 24px 32px 32px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.stage-head { width: 100%; max-width: 560px; display: flex; align-items: center; gap: 12px; }
+.page-name { flex: 1; min-width: 0; font-size: 20px; font-weight: 600; background: transparent; border: 1px solid transparent;
+             border-radius: var(--radius-control); padding: 4px 8px; margin-left: -8px; }
+.page-name:hover { border-color: var(--line); }
+.seg { display: inline-flex; background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius-control); padding: 2px; gap: 2px; }
+.seg button { border: 0; background: transparent; color: var(--text-muted); height: 30px; padding: 0 10px; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+.seg button.on { background: var(--surface-3); color: var(--text); }
+.seg.full { display: flex; } .seg.full button { flex: 1; }
+
+.device-wrap { width: 516px; }
+.device { width: 516px; height: 356px; padding: 18px; background: #050506; border: 1px solid #2A2D30; border-radius: 22px; transform-origin: 0 0; }
+.screen { position: relative; width: 480px; height: 320px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.sbar { position: absolute; inset: 0 0 auto 0; height: 22px; background: var(--surface-2); display: flex; align-items: center;
+        padding: 0 10px; font-size: 12px; font-weight: 500; gap: 6px; }
+.sbar .host { color: var(--text-muted); font-weight: 400; }
+.sbar svg.i { width: 14px; height: 14px; color: var(--ok); }
+.cell { position: absolute; border-radius: var(--radius-tile); border: 1.5px dashed var(--line); background: transparent;
+        color: var(--text-faint); display: grid; place-items: center; cursor: pointer; font-size: 20px; }
+.cell:hover { border-color: var(--text-faint); color: var(--text-muted); }
+.tile { position: absolute; border-radius: var(--radius-tile); border: 0; padding: 10px; text-align: left; cursor: pointer; overflow: hidden;
+        display: flex; flex-direction: column; justify-content: space-between; font-size: 16px; font-weight: 500; line-height: 19px;
+        transition: transform 80ms ease-out, filter 80ms ease-out; }
+.tile:active { transform: scale(.96); filter: brightness(.8); }
+/* Drag and drop. Pointer events are used (not HTML5 drag) so touch works too. */
+.tile, .tray-item, .resize { touch-action: none; -webkit-user-select: none; user-select: none; }
+.tray-item { touch-action: pan-x; }   /* horizontal swipes scroll the tray; vertical drags pick up a tile */
+.tile { cursor: grab; }
+.tile.drag-src { opacity: .3; }
+.drop-ind { position: absolute; z-index: 3; pointer-events: none; border-radius: var(--radius-tile);
+            border: 2px dashed var(--text); background: color-mix(in srgb, var(--text) 10%, transparent); }
+.drop-ind.bad { border-color: var(--error); background: color-mix(in srgb, var(--error) 14%, transparent); }
+.compact .drop-ind { border-radius: 12px; }
+.ghost { position: fixed; left: 0; top: 0; z-index: 30; pointer-events: none; transform-origin: 0 0; }
+.ghost { opacity: .85; }
+.ghost .tile { outline: 2px solid var(--text); outline-offset: 2px; cursor: grabbing; }
+.ghost.bad .tile { outline-color: var(--error); }
+.resize { position: absolute; z-index: 4; width: 20px; height: 20px; border-radius: 6px; background: var(--text);
+          border: 2px solid var(--bg); cursor: nwse-resize; display: grid; place-items: center; color: var(--on-bright); }
+.resize svg.i { width: 12px; height: 12px; stroke-width: 2.4; }
+body.dragging, body.dragging * { cursor: grabbing !important; }
+body.dragging .cell { color: transparent; }   /* don't show + through the dragged tile */
+
+/* ---------- tile tray ---------- */
+.tray { position: relative; width: 100%; max-width: 560px; background: var(--surface-1); border: 1px solid var(--line);
+        border-radius: var(--radius-panel); padding: 12px 12px 14px; }
+.tray-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; font-size: 13px; font-weight: 500; }
+.tray-group { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-faint); margin: 12px 0 6px; }
+.tray-group:first-of-type { margin-top: 0; }
+.tray-items { display: flex; flex-wrap: wrap; gap: 8px; }
+.tray-item { flex: none; width: 76px; height: 60px; border-radius: 12px; border: 0; padding: 8px; cursor: grab; text-align: left;
+             display: flex; flex-direction: column; justify-content: space-between; font-size: 12px; font-weight: 500; line-height: 14px; overflow: hidden; }
+.tray-item svg.i { width: 16px; height: 16px; }
+.tray-item:hover { outline: 1px solid var(--text-faint); outline-offset: 2px; }
+.tray-trash { position: absolute; inset: 0; border-radius: var(--radius-panel); display: none; place-items: center; gap: 4px;
+              background: var(--surface-1); border: 2px dashed var(--line); color: var(--text-muted); font-weight: 500; }
+.tray.trash .tray-trash { display: grid; }
+.tray.trash.hot .tray-trash { border-color: var(--error); color: var(--error); background: color-mix(in srgb, var(--error) 10%, var(--surface-1)); }
+.tile .label { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+.tile svg.i { width: 20px; height: 20px; }
+.tile.soft::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--sw); }
+.tile.sel { outline: 2px solid var(--text); outline-offset: 2px; }
+.compact .tile { border-radius: 12px; font-size: 14px; line-height: 17px; padding: 8px; }
+.compact .cell { border-radius: 12px; }
+.compact .tile svg.i { width: 18px; height: 18px; }
+.pdots { position: absolute; bottom: 2px; left: 0; right: 0; display: flex; justify-content: center; gap: 8px; }
+.pdots i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); }
+.pdots i.on { background: var(--text); }
+.hint { color: var(--text-faint); font-size: 12px; text-align: center; }
+
+/* ---------- editor sheet ---------- */
+.editor { border-left: 1px solid var(--line); background: var(--surface-2); overflow: auto; padding: 20px 20px 32px; display: flex; flex-direction: column; gap: 20px; }
+.editor > * { flex-shrink: 0; }
+.editor h2 { margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.editor h2 .sw-dot { width: 14px; height: 14px; border-radius: 4px; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field > label, .field > .lbl { font-size: 12px; color: var(--text-muted); }
+.row { display: flex; gap: 8px; align-items: center; }
+input[type=text], input[type=number], input[type=password], select, textarea {
+  width: 100%; height: 36px; padding: 0 10px; background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius-control); }
+textarea { height: 88px; padding: 8px 10px; resize: vertical; font-family: var(--mono); font-size: 13px; }
+.swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.swatch { aspect-ratio: 1; border-radius: 8px; border: 0; cursor: pointer; position: relative; }
+.swatch.on::after { content: ''; position: absolute; inset: -4px; border: 2px solid var(--text); border-radius: 11px; }
+.swatch-name { font-size: 12px; color: var(--text-faint); }
+.icons { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.icons button { height: 40px; border-radius: var(--radius-control); border: 1px solid var(--line); background: var(--surface-1); color: var(--text-muted); cursor: pointer; display: grid; place-items: center; }
+.icons button.on { border-color: var(--text); color: var(--text); background: var(--surface-3); }
+.keys { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 36px; }
+.keycap { font: 500 13px var(--mono); height: 30px; min-width: 30px; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+          background: var(--surface-3); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; }
+.keycap button { border: 0; background: none; color: var(--text-faint); cursor: pointer; padding: 0; font-size: 14px; line-height: 1; }
+.keys .plus { color: var(--text-faint); font-size: 12px; }
+.recording { border-color: var(--warn) !important; color: var(--warn); }
+.err { color: var(--error); font-size: 12px; }
+.note { color: var(--text-faint); font-size: 12px; }
+.divider { height: 1px; background: var(--line); margin: 0 -20px; }
+.editor-actions { display: flex; gap: 8px; }
+.editor-actions .btn.danger { margin-left: auto; }
+
+/* ---------- device settings view ---------- */
+.cards { width: 100%; max-width: 760px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.card { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius-panel); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.card h3 { margin: 0; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.card h3 .state { margin-left: auto; font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.card h3 .state::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13px; }
+.kv dt { color: var(--text-muted); } .kv dd { margin: 0; font-family: var(--mono); font-size: 12px; text-align: right; }
+input[type=range] { width: 100%; accent-color: var(--text); }
+.json { width: 100%; max-width: 760px; }
+.json-panes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.json-panes > div { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.json-title { font-size: 12px; color: var(--text); font-weight: 500; }
+.json-title .note { font-weight: 400; }
+.json pre { margin: 0; height: 300px; overflow: auto; background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius-panel);
+            padding: 12px 16px; font: 12px/1.5 var(--mono); color: var(--text-muted); }
+.json-foot { margin-top: 8px; font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 10px; }
+.meter { flex: 0 0 120px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--ok); }
+details summary { cursor: pointer; color: var(--text-muted); font-size: 13px; padding: 4px 0; }
+
+/* ---------- toast ---------- */
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+         background: var(--surface-3); border: 1px solid var(--line); border-radius: var(--radius-control); padding: 10px 14px;
+         display: flex; align-items: center; gap: 8px; transition: all 160ms ease-out; z-index: 10; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.toast .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+
+/* ---------- phone ---------- */
+@media (max-width: 860px) {
+  .app { grid-template-rows: auto 1fr; height: auto; min-height: 100vh; }
+  header { flex-wrap: wrap; padding: 10px 16px; gap: 10px; }
+  .chips { order: 3; flex: 1 1 100%; min-width: 0; margin: 0; overflow-x: auto; }
+  main, main.no-editor { grid-template-columns: minmax(0, 1fr); align-content: start; }
+  .sidebar { border-right: 0; border-bottom: 1px solid var(--line); flex-direction: row; align-items: center; overflow-x: auto; padding: 8px 16px; gap: 8px; }
+  .stage-head { flex-wrap: wrap; }
+  .side-title { display: none; }
+  .pages-list { flex-direction: row; }
+  .nav-item { width: auto; white-space: nowrap; }
+  .nav-item .count, .nav-item .grip { display: none; }
+  .stage { padding: 16px; }
+  .editor { border-left: 0; border-top: 1px solid var(--line); border-radius: 16px 16px 0 0; padding: 16px 16px 32px; }
+  .editor::before { content: ''; align-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--line); margin-bottom: -8px; }
+  .divider { margin: 0 -16px; }
+  .cards { grid-template-columns: 1fr; }
+  .json-panes { grid-template-columns: 1fr; }
+  .tray-items { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }   /* swipe sideways on phones */
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><span class="brand-mark"><i></i><i></i><i></i><i></i></span>TriggerGrid</div>
+    <div class="chips">
+      <span class="chip"><span class="dot"></span>Wi-Fi <b>Home-Net</b> · triggergrid.local</span>
+      <span class="chip"><span class="dot"></span>Bluetooth <b>Desk-PC</b></span>
+    </div>
+    <div class="spacer"></div>
+    <span class="dirty" id="dirty"><span class="dot"></span>Unsaved changes</span>
+    <button class="btn primary" id="save" disabled>Save to device</button>
+  </header>
+
+  <main id="main">
+    <nav class="sidebar">
+      <div>
+        <div class="side-title">Pages</div>
+        <div class="pages-list" id="pages"></div>
+      </div>
+      <div>
+        <div class="side-title">Device</div>
+        <button class="nav-item" data-view="device"><svg class="i" viewBox="0 0 20 20"><circle cx="10" cy="10" r="3"/><path d="M10 1.5v3M10 15.5v3M1.5 10h3M15.5 10h3M4 4l2.1 2.1M13.9 13.9 16 16M4 16l2.1-2.1M13.9 6.1 16 4"/></svg>Settings</button>
+      </div>
+    </nav>
+
+    <section class="stage" id="stage"></section>
+    <aside class="editor" id="editor"></aside>
+  </main>
+</div>
+<div class="toast" id="toast"><span class="dot"></span><span id="toast-msg"></span></div>
+
+<script>
+// ---- style-guide data -------------------------------------------------------
+const SWATCHES = {
+  graphite: ['#2C3034', 'var(--text)'],  steel:  ['#8A96A3', 'var(--on-bright)'],
+  volt:     ['#C6F432', 'var(--on-bright)'], mint: ['#3EE6A8', 'var(--on-bright)'],
+  aqua:     ['#2BD4E6', 'var(--on-bright)'], azure: ['#3D8BFF', 'var(--on-bright)'],
+  violet:   ['#9B6BFF', 'var(--on-bright)'], magenta: ['#F24FD1', 'var(--on-bright)'],
+  coral:    ['#FF5C5C', 'var(--on-bright)'], tangerine: ['#FF8A1F', 'var(--on-bright)'],
+  sun:      ['#FFD60A', 'var(--on-bright)'], crimson: ['#C8233B', 'var(--text)'],
+};
+// Grid geometry per density (style guide, "Grid densities").
+const GRID = {
+  regular: { cols: 5, rows: 3, w: 88, h: 88, gap: 6, padX: 8, padY: 6 },
+  compact: { cols: 6, rows: 4, w: 73, h: 64, gap: 6, padX: 6, padY: 7 },
+};
+const STATUS_H = 22;
+const ICONS = {
+  copy: '<rect x="6" y="6" width="11" height="11" rx="2"/><path d="M3 13V5a2 2 0 0 1 2-2h8"/>',
+  paste: '<rect x="4" y="4" width="12" height="14" rx="2"/><rect x="7" y="2" width="6" height="4" rx="1"/>',
+  mail: '<rect x="2" y="4" width="16" height="12" rx="2"/><path d="M2.5 5.5 10 11l7.5-5.5"/>',
+  undo: '<path d="M7 5 3 9l4 4"/><path d="M3 9h9a5 5 0 0 1 0 10h-2"/>',
+  playpause: '<path d="M3 4v12l8-6z" fill="currentColor"/><path d="M14 4v12M18 4v12"/>',
+  next: '<path d="M3 4v12l9-6z" fill="currentColor"/><path d="M16 4v12"/>',
+  prev: '<path d="M17 4v12L8 10z" fill="currentColor"/><path d="M4 4v12"/>',
+  volup: '<path d="M2 8h3l4-4v12l-4-4H2z"/><path d="M13 10h6M16 7v6"/>',
+  voldown: '<path d="M2 8h3l4-4v12l-4-4H2z"/><path d="M13 10h6"/>',
+  mute: '<path d="M2 8h3l4-4v12l-4-4H2z"/><path d="m13 7 6 6M19 7l-6 6"/>',
+  shot: '<path d="M2 7V4a2 2 0 0 1 2-2h3M13 2h3a2 2 0 0 1 2 2v3M18 13v3a2 2 0 0 1-2 2h-3M7 18H4a2 2 0 0 1-2-2v-3"/><circle cx="10" cy="10" r="3"/>',
+  lock: '<rect x="3" y="9" width="14" height="10" rx="2"/><path d="M6 9V6a4 4 0 0 1 8 0v3"/>',
+  code: '<path d="m7 5-5 5 5 5M13 5l5 5-5 5"/>',
+  save: '<path d="M4 2h9l4 4v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/><path d="M6 2v5h7V2M6 18v-6h8v6"/>',
+  search: '<circle cx="9" cy="9" r="6"/><path d="m13.5 13.5 4.5 4.5"/>',
+  mic: '<rect x="7" y="2" width="6" height="10" rx="3"/><path d="M4 10a6 6 0 0 0 12 0M10 16v3"/>',
+  terminal: '<rect x="2" y="3" width="16" height="14" rx="2"/><path d="m5 8 3 2-3 2M10 13h5"/>',
+  keyboard: '<rect x="2" y="5" width="16" height="10" rx="2"/><path d="M5.5 8.5h.01M8.5 8.5h.01M11.5 8.5h.01M14.5 8.5h.01M6 12h8"/>',
+  type: '<path d="M4 5V3.5h12V5M10 3.5v13M7.5 16.5h5"/>',
+  none: '',
+};
+const MEDIA_KEYS = ['PLAY_PAUSE','NEXT_TRACK','PREV_TRACK','STOP','MUTE','VOLUME_UP','VOLUME_DOWN','BRIGHTNESS_UP','BRIGHTNESS_DOWN'];
+
+// ---- compiler: editor section → pad section (docs/config-schema.md) ---------
+// This is the browser half of "thin device, smart browser": the firmware gets
+// numbers only and has none of these tables. Destined for web/lib/ in M6.
+const COLOR_HEX = { 'var(--text)': 'F2F3F4', 'var(--on-bright)': '0E0F10' };
+const SURFACE_1 = '1A1C1E';
+const MODIFIERS = { CTRL: 0x01, LCTRL: 0x01, SHIFT: 0x02, LSHIFT: 0x02, ALT: 0x04, LALT: 0x04, GUI: 0x08, LGUI: 0x08,
+                    RCTRL: 0x10, RSHIFT: 0x20, RALT: 0x40, RGUI: 0x80 };
+// HID keyboard usage codes (USB HID Usage Tables, page 0x07).
+const USAGE = { ENTER: 0x28, ESC: 0x29, BACKSPACE: 0x2A, TAB: 0x2B, SPACE: 0x2C, MINUS: 0x2D, EQUAL: 0x2E,
+  LBRACKET: 0x2F, RBRACKET: 0x30, BACKSLASH: 0x31, SEMICOLON: 0x33, QUOTE: 0x34, GRAVE: 0x35, COMMA: 0x36,
+  PERIOD: 0x37, SLASH: 0x38, CAPS_LOCK: 0x39, PRINT_SCREEN: 0x46, INSERT: 0x49, HOME: 0x4A, PAGE_UP: 0x4B,
+  DELETE: 0x4C, END: 0x4D, PAGE_DOWN: 0x4E, RIGHT: 0x4F, LEFT: 0x50, DOWN: 0x51, UP: 0x52 };
+for (let i = 0; i < 26; i++) USAGE[String.fromCharCode(65 + i)] = 0x04 + i;          // A–Z
+for (let i = 1; i <= 9; i++) USAGE[String(i)] = 0x1E + i - 1;  USAGE['0'] = 0x27;    // 1–9, 0
+for (let i = 1; i <= 12; i++) USAGE['F' + i] = 0x3A + i - 1;                         // F1–F12
+for (let i = 13; i <= 24; i++) USAGE['F' + i] = 0x68 + i - 13;                       // F13–F24
+// HID consumer usage codes (page 0x0C).
+const CONSUMER = { PLAY_PAUSE: 0xCD, NEXT_TRACK: 0xB5, PREV_TRACK: 0xB6, STOP: 0xB7, MUTE: 0xE2,
+                   VOLUME_UP: 0xE9, VOLUME_DOWN: 0xEA, BRIGHTNESS_UP: 0x6F, BRIGHTNESS_DOWN: 0x70 };
+
+// Keyboard layouts: character → [modifier, usage] as typed on the *computer's* layout.
+// Adding a layout (uk, de, …) is a browser-only change: the firmware never sees characters.
+const LAYOUTS = {
+  us: {
+    name: 'US English',
+    map: (() => {
+      const m = { ' ': [0, 0x2C], '\n': [0, 0x28], '\t': [0, 0x2B] };
+      for (let i = 0; i < 26; i++) {
+        m[String.fromCharCode(97 + i)] = [0, 0x04 + i];
+        m[String.fromCharCode(65 + i)] = [0x02, 0x04 + i];
+      }
+      '1234567890'.split('').forEach((c, i) => { m[c] = [0, 0x1E + i]; });
+      '!@#$%^&*()'.split('').forEach((c, i) => { m[c] = [0x02, 0x1E + i]; });
+      const pairs = [['-', '_', 0x2D], ['=', '+', 0x2E], ['[', '{', 0x2F], [']', '}', 0x30], ['\\', '|', 0x31],
+                     [';', ':', 0x33], ["'", '"', 0x34], ['`', '~', 0x35], [',', '<', 0x36], ['.', '>', 0x37], ['/', '?', 0x38]];
+      pairs.forEach(([plain, shifted, u]) => { m[plain] = [0, u]; m[shifted] = [0x02, u]; });
+      return m;
+    })(),
+  },
+};
+const layout = () => LAYOUTS[config.settings.hostLayout] || LAYOUTS.us;
+
+const hex2 = (n) => n.toString(16).toUpperCase().padStart(2, '0');
+
+// ---- Unicode input: characters that aren't on the keyboard layout ------------
+// A BLE keyboard sends key *positions*, never characters. Anything the layout
+// can't type (é, €, 👋) is typed with the computer's own Unicode input method,
+// which differs per OS. Each method below returns a list of [modifier, usage]
+// keystrokes. Keystroke rules the firmware follows (config-schema.md):
+//   - consecutive keystrokes with the same modifier keep that modifier held;
+//   - [0, 0] releases everything (ends an Alt or Option sequence).
+const HOST_OS = {
+  windows: { name: 'Windows', how: 'Accented letters and symbols such as é, ñ and € are typed with Alt codes (Alt + numpad) and need no setup. Other characters and emoji use hex numpad input: it needs a one-time registry setting and doesn’t work in every app.' },
+  mac:     { name: 'macOS', how: 'Characters that aren’t on the keyboard are typed with Unicode Hex Input. One-time setup: System Settings › Keyboard › Input Sources, add “Unicode Hex Input” and switch to it. It types normal text like a US keyboard.' },
+  linux:   { name: 'Linux', how: 'Characters that aren’t on the keyboard are typed with Ctrl+Shift+U (IBus, the default on GNOME and Ubuntu). Works in most apps; a few terminals and non-IBus desktops ignore it.' },
+  other:   { name: 'Other (iPad, Android, …)', how: 'These have no general way to type a character by its code, so only characters on the US keyboard can be used.' },
+};
+const hostOS = () => HOST_OS[config.settings.hostOS] ? config.settings.hostOS : 'windows';
+
+const KP_DIGIT = (d) => d === '0' ? 0x62 : 0x59 + (+d - 1);            // numpad 1–9, 0
+const hexKeys = (hex, mod, digitKey) =>                                 // type hex digits
+  [...hex].map(c => /\d/.test(c) ? [mod, digitKey(c)] : [mod, USAGE[c.toUpperCase()]]);
+
+// Windows code page 1252 (the Western "ANSI" set) → Alt code. 0xA0–0xFF match Unicode.
+const CP1252 = { '€': 128, '‚': 130, 'ƒ': 131, '„': 132, '…': 133, '†': 134, '‡': 135, 'ˆ': 136, '‰': 137, 'Š': 138,
+  '‹': 139, 'Œ': 140, 'Ž': 142, '‘': 145, '’': 146, '“': 147, '”': 148, '•': 149, '–': 150, '—': 151, '˜': 152,
+  '™': 153, 'š': 154, '›': 155, 'œ': 156, 'ž': 158, 'Ÿ': 159 };
+const cp1252 = (ch, cp) => CP1252[ch] ?? (cp >= 0xA0 && cp <= 0xFF ? cp : null);
+
+const UNICODE_INPUT = {
+  // Linux (IBus): Ctrl+Shift+U, the hex code point, Space.  é → Ctrl+Shift+U e 9 Space
+  linux: (ch, cp) => ({ strokes: [[0x03, USAGE.U], ...hexKeys(cp.toString(16), 0, d => USAGE[d]), [0, USAGE.SPACE]] }),
+
+  // macOS (Unicode Hex Input): hold Option and type 4 hex digits per UTF-16 unit.
+  // Emoji are two units (a surrogate pair), typed in one Option hold.
+  mac: (ch) => {
+    const units = [...Array(ch.length).keys()].map(i => ch.charCodeAt(i).toString(16).padStart(4, '0'));
+    return { strokes: [...hexKeys(units.join(''), 0x04, d => USAGE[d]), [0, 0]] };
+  },
+
+  // Windows: Alt + numpad decimal code for the CP1252 set (no setup), otherwise
+  // Alt + numpad-plus + hex (needs EnableHexNumpad in the registry). Both need NumLock.
+  windows: (ch, cp) => {
+    const code = cp1252(ch, cp);
+    if (code != null)
+      return { np: true, strokes: [...[...('0' + String(code).padStart(3, '0'))].map(d => [0x04, KP_DIGIT(d)]), [0, 0]] };
+    return { np: true, hexNumpad: true,
+             strokes: [[0x04, 0x57 /* numpad + */], ...hexKeys(cp.toString(16), 0x04, KP_DIGIT), [0, 0]] };
+  },
+
+  other: () => null,
+};
+
+// Compile typed text into keystrokes: the US layout first, the OS's Unicode method
+// for everything else. Returns { a, unicode, warn } or { error }.
+function compileText(action) {
+  const map = layout().map, os = hostOS(), chars = [...(action.text || '')];
+  const strokes = [], unicode = [], bad = [];
+  let np = false, hexNumpad = false;
+  for (const ch of chars) {
+    if (map[ch]) { strokes.push(map[ch]); continue; }
+    const cp = ch.codePointAt(0);
+    const seq = cp < 0x20 || (cp >= 0x7F && cp < 0xA0) ? null : UNICODE_INPUT[os](ch, cp);   // no control characters
+    if (!seq) { bad.push(ch); continue; }
+    strokes.push(...seq.strokes); unicode.push(ch);
+    np ||= !!seq.np; hexNumpad ||= !!seq.hexNumpad;
+  }
+  const list = (cs) => [...new Set(cs)].map(c => `“${c}”`).join(', ');
+  if (bad.length) return { error: os === 'other'
+    ? `Can't type ${list(bad)}: with the computer set to ${HOST_OS.other.name}, only US-keyboard characters work.`
+    : `Can't type ${list(bad)} (control characters).` };
+  if (chars.length > 1024) return { error: 'Text is longer than 1024 characters.' };
+  if (strokes.length > 4096) return { error: `This text needs ${strokes.length} keystrokes; the limit is 4096.` };
+  const a = { t: 's', d: action.charDelayMs ?? 10, s: strokes.map(([m, u]) => hex2(m) + hex2(u)).join('') };
+  if (np) a.np = true;   // firmware turns NumLock on for the numpad codes, then restores it
+  return { a, strokes: strokes.length, unicode: [...new Set(unicode)], hexNumpad };
+}
+// Characters that can't be typed at all with the current settings (used by tests).
+function untypable(text) {
+  const r = compileText({ type: 'text', text });
+  return r.error ? [...new Set([...text].filter(c => compileText({ type: 'text', text: c }).error))] : [];
+}
+function mixHex(a, b, t) {    // same maths as the style guide's `soft` tile: t of a over b
+  return [0, 2, 4].map(i => hex2(Math.round(parseInt(a.substr(i, 2), 16) * t + parseInt(b.substr(i, 2), 16) * (1 - t)))).join('');
+}
+
+// One tile's action → compiled action. Returns { a } or { error }.
+function compileAction(action) {
+  if (action.type === 'keys') {
+    let m = 0; const k = [];
+    for (const name of action.keys) {
+      if (name in MODIFIERS) m |= MODIFIERS[name];
+      else if (name in USAGE) k.push(USAGE[name]);
+      else return { error: `Unknown key “${name}”.` };
+    }
+    if (!m && !k.length) return { error: 'Add at least one key.' };
+    if (k.length > 6) return { error: 'At most 6 non-modifier keys.' };
+    return { a: { t: 'k', m, k } };
+  }
+  if (action.type === 'media') {
+    return action.key in CONSUMER ? { a: { t: 'c', u: CONSUMER[action.key] } } : { error: `Unknown media key “${action.key}”.` };
+  }
+  if (action.type === 'text') return compileText(action);
+  return { error: `Unknown action type “${action.type}”.` };
+}
+
+const ICON_INDEX = Object.fromEntries(Object.keys(ICONS).filter(n => n !== 'none').map((n, i) => [n, i + 1]));
+
+function compileTile(t) {
+  const [sw, on] = SWATCHES[t.color] || SWATCHES.graphite, swHex = sw.slice(1), onHex = COLOR_HEX[on];
+  const soft = t.style === 'soft', { a } = compileAction(t.action);
+  return { x: t.x, y: t.y, w: t.w, h: t.h, label: t.label, icon: ICON_INDEX[t.icon] || 0,
+           bg: soft ? mixHex(swHex, SURFACE_1, 0.16) : swHex, fg: soft ? COLOR_HEX['var(--text)'] : onHex,
+           accent: soft ? swHex : onHex, bar: soft, a: a ?? null };   // null = action has an error; Save is blocked
+}
+function compilePad() {
+  const s = config.settings;
+  return { v: 1, name: s.deviceName, density: s.density === 'compact' ? 1 : 0, brightness: s.brightness,
+           dim: s.dimAfterSec, pages: config.pages.map(p => ({ name: p.name, tiles: p.tiles.map(compileTile) })) };
+}
+// The whole file as PUT /api/config would send it (compact JSON, as saved).
+function savedFile() {
+  return JSON.stringify({ version: config.version, editor: { settings: config.settings, pages: config.pages }, pad: compilePad() });
+}
+const MAX_FILE = 32 * 1024;
+
+// Everything that blocks a save, across all pages: grid rules, actions, file size.
+function saveProblems() {
+  const out = [];
+  config.pages.forEach(p => p.tiles.forEach(t => {
+    const fit = fitError(t, p), act = compileAction(t.action).error;
+    if (fit) out.push(`${p.name} › ${t.label}: ${fit}`);
+    if (act) out.push(`${p.name} › ${t.label}: ${act}`);
+  }));
+  const size = new Blob([savedFile()]).size;
+  if (size > MAX_FILE) out.push(`The layout is ${(size / 1024).toFixed(1)} KB; the device limit is 32 KB.`);
+  return out;
+}
+const svg = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 20 20">${ICONS[name] || ''}</svg>`;
+
+// ---- config (docs/config-schema.md, version 1) -----------------------------
+const config = {
+  version: 1,
+  settings: { deviceName: 'TriggerGrid', density: 'regular', brightness: 180, dimAfterSec: 120, hostLayout: 'us', hostOS: 'windows' },
+  pages: [
+    { id: 'edit', name: 'Editing', tiles: [
+      { id: 'copy',  x: 0, y: 0, w: 1, h: 1, label: 'Copy',  icon: 'copy',  color: 'azure', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'C'] } },
+      { id: 'paste', x: 1, y: 0, w: 1, h: 1, label: 'Paste', icon: 'paste', color: 'azure', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'V'] } },
+      { id: 'sig',   x: 2, y: 0, w: 2, h: 1, label: 'Email sig', icon: 'mail', color: 'violet', style: 'soft', action: { type: 'text', text: 'Cheers,\nAlex', charDelayMs: 10 } },
+      { id: 'undo',  x: 4, y: 0, w: 1, h: 1, label: 'Undo',  icon: 'undo',  color: 'graphite', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'Z'] } },
+      { id: 'play',  x: 0, y: 1, w: 2, h: 2, label: 'Play / Pause', icon: 'playpause', color: 'volt', style: 'solid', action: { type: 'media', key: 'PLAY_PAUSE' } },
+      { id: 'volup', x: 2, y: 1, w: 1, h: 1, label: 'Vol +', icon: 'volup', color: 'mint', style: 'solid', action: { type: 'media', key: 'VOLUME_UP' } },
+      { id: 'mute',  x: 3, y: 1, w: 1, h: 1, label: 'Mute',  icon: 'mute',  color: 'coral', style: 'soft', action: { type: 'media', key: 'MUTE' } },
+      { id: 'shot',  x: 4, y: 1, w: 1, h: 2, label: 'Screen shot', icon: 'shot', color: 'sun', style: 'solid', action: { type: 'keys', keys: ['GUI', 'SHIFT', 'S'] } },
+      { id: 'voldn', x: 2, y: 2, w: 1, h: 1, label: 'Vol −', icon: 'voldown', color: 'mint', style: 'solid', action: { type: 'media', key: 'VOLUME_DOWN' } },
+      { id: 'lock',  x: 3, y: 2, w: 1, h: 1, label: 'Lock',  icon: 'lock',  color: 'crimson', style: 'solid', action: { type: 'keys', keys: ['GUI', 'L'] } },
+    ]},
+    { id: 'media', name: 'Media', tiles: [
+      { id: 'prev', x: 0, y: 0, w: 1, h: 1, label: 'Prev', icon: 'prev', color: 'aqua', style: 'soft', action: { type: 'media', key: 'PREV_TRACK' } },
+      { id: 'pp',   x: 1, y: 0, w: 2, h: 2, label: 'Play / Pause', icon: 'playpause', color: 'magenta', style: 'solid', action: { type: 'media', key: 'PLAY_PAUSE' } },
+      { id: 'next', x: 3, y: 0, w: 1, h: 1, label: 'Next', icon: 'next', color: 'aqua', style: 'soft', action: { type: 'media', key: 'NEXT_TRACK' } },
+      { id: 'mic',  x: 4, y: 0, w: 1, h: 1, label: 'Mic mute', icon: 'mic', color: 'coral', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'SHIFT', 'M'] } },
+      { id: 'vdn',  x: 0, y: 1, w: 1, h: 1, label: 'Vol −', icon: 'voldown', color: 'graphite', style: 'solid', action: { type: 'media', key: 'VOLUME_DOWN' } },
+      { id: 'vup',  x: 3, y: 1, w: 1, h: 1, label: 'Vol +', icon: 'volup', color: 'graphite', style: 'solid', action: { type: 'media', key: 'VOLUME_UP' } },
+    ]},
+    { id: 'code', name: 'Code', tiles: [
+      { id: 'term',  x: 0, y: 0, w: 2, h: 1, label: 'Terminal', icon: 'terminal', color: 'steel', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'GRAVE'] } },
+      { id: 'find',  x: 2, y: 0, w: 1, h: 1, label: 'Find', icon: 'search', color: 'tangerine', style: 'soft', action: { type: 'keys', keys: ['CTRL', 'SHIFT', 'F'] } },
+      { id: 'build', x: 3, y: 0, w: 2, h: 1, label: 'PIO build', icon: 'code', color: 'volt', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'ALT', 'B'] } },
+      { id: 'save',  x: 0, y: 1, w: 1, h: 1, label: 'Save', icon: 'save', color: 'violet', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'S'] } },
+    ]},
+  ],
+};
+
+// ---- state ------------------------------------------------------------------
+const state = { view: location.hash === '#settings' ? 'device' : 'layout', page: 0, tile: 'copy', recording: false, dirty: false };
+const $ = (id) => document.getElementById(id);
+const page = () => config.pages[state.page];
+const tile = () => page().tiles.find(t => t.id === state.tile);
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function markDirty() { state.dirty = true; $('dirty').classList.add('on'); $('save').disabled = false; }
+let toastTimer;
+function toast(msg, color = 'var(--ok)') {
+  $('toast-msg').textContent = msg; $('toast').querySelector('.dot').style.background = color;
+  $('toast').classList.add('on'); clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('toast').classList.remove('on'), 2200);
+}
+
+// Grid rules from config-schema.md: fits inside the grid, no overlaps.
+// `spot` is {x, y, w, h}; `ignore` is the tile being moved or resized.
+function placeError(spot, pg = page(), ignore = null) {
+  const g = GRID[config.settings.density];
+  if (spot.x < 0 || spot.y < 0 || spot.x + spot.w > g.cols || spot.y + spot.h > g.rows)
+    return `Doesn't fit: the ${config.settings.density} grid is ${g.cols}×${g.rows}.`;
+  const hit = pg.tiles.find(o => o !== ignore && spot.x < o.x + o.w && o.x < spot.x + spot.w && spot.y < o.y + o.h && o.y < spot.y + spot.h);
+  return hit ? `Overlaps “${hit.label}”.` : '';
+}
+const fitError = (t, pg = page()) => placeError(t, pg, t);
+
+// ---- sidebar ---------------------------------------------------------------
+function renderSidebar() {
+  $('pages').innerHTML = config.pages.map((p, i) => `
+    <button class="nav-item ${state.view === 'layout' && i === state.page ? 'active' : ''}" data-page="${i}">
+      <svg class="i grip" viewBox="0 0 20 20"><path d="M7 5h.01M7 10h.01M7 15h.01M13 5h.01M13 10h.01M13 15h.01" stroke-width="2.6"/></svg>
+      ${esc(p.name)}<span class="count">${p.tiles.length}</span></button>`).join('') +
+    `<button class="nav-item add" id="add-page"><svg class="i" viewBox="0 0 20 20"><path d="M10 4v12M4 10h12"/></svg>Add page</button>`;
+  document.querySelector('[data-view="device"]').classList.toggle('active', state.view === 'device');
+}
+
+// ---- preview ---------------------------------------------------------------
+function tileRect(t, g) {
+  return { left: g.padX + t.x * (g.w + g.gap), top: STATUS_H + g.padY + t.y * (g.h + g.gap),
+           width: t.w * g.w + (t.w - 1) * g.gap, height: t.h * g.h + (t.h - 1) * g.gap };
+}
+function px(r) { return Object.entries(r).map(([k, v]) => `${k}:${v}px`).join(';'); }
+
+function renderPreview() {
+  const g = GRID[config.settings.density], pg = page();
+  const used = new Set();
+  pg.tiles.forEach(t => { for (let x = t.x; x < t.x + t.w; x++) for (let y = t.y; y < t.y + t.h; y++) used.add(x + ',' + y); });
+  let cells = '';
+  for (let y = 0; y < g.rows; y++) for (let x = 0; x < g.cols; x++)
+    if (!used.has(x + ',' + y)) cells += `<button class="cell" data-cell="${x},${y}" title="Add tile" style="${px(tileRect({ x, y, w: 1, h: 1 }, g))}">+</button>`;
+  const tiles = pg.tiles.map(t => tileHTML(t, tileRect(t, g), t.id === state.tile ? 'sel' : '')).join('');
+  const sel = pg.tiles.find(t => t.id === state.tile), sr = sel && tileRect(sel, g);
+  const handle = sel ? `<div class="resize" data-resize="${sel.id}" title="Drag to resize"
+      style="left:${sr.left + sr.width - 13}px;top:${sr.top + sr.height - 13}px">
+      <svg class="i" viewBox="0 0 20 20"><path d="M7 17h10V7M3 13l10-10"/></svg></div>` : '';
+  return `
+    <div class="device-wrap" id="device-wrap"><div class="device" id="device">
+      <div class="screen ${config.settings.density}">
+        <div class="sbar"><span>${esc(pg.name)}</span><span class="spacer"></span>
+          <svg class="i" viewBox="0 0 20 20"><path d="M3 8a10 10 0 0 1 14 0M6 11a6 6 0 0 1 8 0"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+          <svg class="i" viewBox="0 0 20 20"><path d="m5 6 9 8-4 3.5v-15L14 6l-9 8"/></svg>
+          <span class="host">Desk-PC</span></div>
+        ${cells}${tiles}${handle}
+        ${config.pages.length > 1 ? `<div class="pdots">${config.pages.map((_, i) => `<i class="${i === state.page ? 'on' : ''}"></i>`).join('')}</div>` : ''}
+      </div></div></div>`;
+}
+
+function tileColors(t) {
+  const [sw, on] = SWATCHES[t.color] || SWATCHES.graphite, soft = t.style === 'soft';
+  return { sw, soft, bg: soft ? `color-mix(in srgb, ${sw} 16%, var(--surface-1))` : sw,
+           fg: soft ? 'var(--text)' : on, ic: soft ? sw : on };
+}
+function tileHTML(t, rect, extra = '') {
+  const c = tileColors(t);
+  const small = config.settings.density === 'compact' && t.w === 1 && t.h === 1 && t.icon && t.icon !== 'none';
+  return `<button class="tile ${c.soft ? 'soft' : ''} ${extra}" data-tile="${t.id}" aria-label="${esc(t.label)}, ${t.w}×${t.h} at column ${t.x + 1}, row ${t.y + 1}"
+    style="${px(rect)};background:${c.bg};color:${c.fg};--sw:${c.sw}">
+    ${small ? '<span></span>' : `<span class="label">${esc(t.label)}</span>`}
+    <span style="color:${c.ic}">${svg(t.icon)}</span></button>`;
+}
+
+// Scale the 1:1 device preview down only when the stage is narrower than it.
+function fitDevice() {
+  const wrap = $('device-wrap'), dev = $('device');
+  if (!wrap) return;
+  const s = Math.min(1, wrap.parentElement.clientWidth / 516);
+  dev.style.transform = `scale(${s})`;
+  wrap.style.width = 516 * s + 'px';
+  wrap.style.height = 356 * s + 'px';
+  const note = $('scale-note');
+  if (note) note.textContent = s < 1 ? `Scaled to ${Math.round(s * 100)}%.` : 'Actual size.';
+}
+
+function updateJson() {
+  if (!$('json-editor')) return;
+  $('json-editor').textContent = JSON.stringify(page(), null, 2);
+  $('json-pad').textContent = JSON.stringify(compilePad().pages[state.page], null, 2);
+  const size = new Blob([savedFile()]).size, pct = Math.min(100, size / MAX_FILE * 100);
+  $('json-foot').innerHTML = `<span class="meter"><i style="width:${pct}%;${size > MAX_FILE ? 'background:var(--error)' : ''}"></i></span>
+    Whole file ${(size / 1024).toFixed(1)} KB of the 32 KB device limit`;
+}
+document.addEventListener('toggle', (e) => { if (e.target.id === 'json') state.jsonOpen = e.target.open; }, true);
+
+// ---- tile tray: templates you drag onto the screen -------------------------
+const TEMPLATES = [
+  { group: 'Blank' },
+  { label: 'Key combo', icon: 'keyboard', color: 'graphite', style: 'solid', action: { type: 'keys', keys: ['F13'] } },
+  { label: 'Type text', icon: 'type', color: 'graphite', style: 'solid', action: { type: 'text', text: '', charDelayMs: 10 } },
+  { label: 'Media key', icon: 'playpause', color: 'graphite', style: 'solid', action: { type: 'media', key: 'PLAY_PAUSE' } },
+  { group: 'Presets' },
+  { label: 'Copy', icon: 'copy', color: 'azure', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'C'] } },
+  { label: 'Paste', icon: 'paste', color: 'azure', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'V'] } },
+  { label: 'Undo', icon: 'undo', color: 'graphite', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'Z'] } },
+  { label: 'Save', icon: 'save', color: 'violet', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'S'] } },
+  { label: 'Play / Pause', icon: 'playpause', color: 'volt', style: 'solid', action: { type: 'media', key: 'PLAY_PAUSE' } },
+  { label: 'Vol +', icon: 'volup', color: 'mint', style: 'solid', action: { type: 'media', key: 'VOLUME_UP' } },
+  { label: 'Vol −', icon: 'voldown', color: 'mint', style: 'solid', action: { type: 'media', key: 'VOLUME_DOWN' } },
+  { label: 'Mute', icon: 'mute', color: 'coral', style: 'soft', action: { type: 'media', key: 'MUTE' } },
+  { label: 'Lock', icon: 'lock', color: 'crimson', style: 'solid', action: { type: 'keys', keys: ['GUI', 'L'] } },
+  { label: 'Screen shot', icon: 'shot', color: 'sun', style: 'solid', action: { type: 'keys', keys: ['GUI', 'SHIFT', 'S'] } },
+];
+function renderTray() {
+  // One row of items per group; a group entry closes the previous row and opens a new one.
+  const items = TEMPLATES.map((tp, i) => {
+    if (tp.group) return `${i ? '</div>' : ''}<div class="tray-group">${tp.group}</div><div class="tray-items">`;
+    const c = tileColors(tp);
+    return `<button class="tray-item" data-template="${i}" title="Drag onto the screen"
+      style="background:${c.bg};color:${c.fg}"><span>${esc(tp.label)}</span><span style="color:${c.ic}">${svg(tp.icon)}</span></button>`;
+  }).join('') + '</div>';
+  return `<div class="tray" id="tray">
+    <div class="tray-head">Add tiles <span class="note">Drag onto the screen. Tiles start at 1×1.</span></div>
+    ${items}
+    <div class="tray-trash"><span><svg class="i" viewBox="0 0 20 20"><path d="M3 5h14M8 5V3h4v2M5 5l1 12h8l1-12"/></svg></span>Drop here to delete</div>
+  </div>`;
+}
+function newTile(tp, spot) {
+  return { id: 't' + Date.now().toString(36), ...spot, label: tp.label, icon: tp.icon, color: tp.color, style: tp.style,
+           action: JSON.parse(JSON.stringify(tp.action)) };
+}
+
+// ---- layout view -----------------------------------------------------------
+function renderLayout() {
+  const d = config.settings.density;
+  $('stage').innerHTML = `
+    <div class="stage-head">
+      <input class="page-name" id="page-name" value="${esc(page().name)}" maxlength="20" aria-label="Page name">
+      <div class="seg" role="group" aria-label="Grid density">
+        <button data-density="regular" class="${d === 'regular' ? 'on' : ''}">Regular 5×3</button>
+        <button data-density="compact" class="${d === 'compact' ? 'on' : ''}">Compact 6×4</button>
+      </div>
+    </div>
+    ${renderPreview()}
+    <div class="hint"><span id="scale-note">Actual size.</span> Drag tiles to move them, drag the white corner to resize,
+      or drag a new tile in from the tray. Arrow keys nudge the selected tile.</div>
+    ${renderTray()}
+    <details class="json" id="json" ${state.jsonOpen ? 'open' : ''}><summary>config.json: what Save sends to the device</summary>
+      <div class="json-panes">
+        <div><span class="json-title">editor <span class="note">· this page, for the browser</span></span><pre id="json-editor"></pre></div>
+        <div><span class="json-title">pad <span class="note">· this page compiled, the only part the device reads</span></span><pre id="json-pad"></pre></div>
+      </div>
+      <div class="json-foot" id="json-foot"></div>
+    </details>`;
+  updateJson();
+  fitDevice();
+}
+
+function textNote(a) {
+  const r = compileText(a), os = HOST_OS[hostOS()];
+  if (r.error) return `<span class="err">${esc(r.error)} Remove them, or change the computer in Settings.</span>`;
+  const count = `${[...(a.text || '')].length} / 1024 characters · ${r.strokes} keystrokes`;
+  if (!r.unicode.length) return `<span class="note">${count}</span>`;
+  const which = r.unicode.slice(0, 6).map(c => `“${esc(c)}”`).join(', ') + (r.unicode.length > 6 ? '…' : '');
+  const winNote = r.hexNumpad ? ' Emoji and characters outside the Alt-code set use Windows hex numpad input, which needs a one-time registry setting and may not work in every app.' : '';
+  return `<span class="note" style="color:${r.hexNumpad ? 'var(--warn)' : 'var(--text-muted)'}">${count}<br>
+    ${which} will be typed with ${os.name} Unicode input.${winNote}</span>`;
+}
+
+function renderEditor() {
+  const t = tile();
+  if (!t) {
+    $('editor').innerHTML = `<h2>No tile selected</h2><p class="note">Tap a tile in the preview to edit it, or tap an empty <b>+</b> cell to add a tile there.</p>`;
+    return;
+  }
+  const a = t.action, err = fitError(t);
+  // Build only the form for this tile's action type (the others' fields don't exist on it).
+  const actionFields = {
+    keys: () => `
+      <div class="field"><span class="lbl">Key combo</span>
+        <div class="keys">${a.keys.map((k, i) => `${i ? '<span class="plus">+</span>' : ''}<span class="keycap">${esc(k)}<button data-delkey="${i}" aria-label="Remove ${esc(k)}">×</button></span>`).join('')}</div>
+        <div class="row"><button class="btn small ${state.recording ? 'recording' : ''}" id="record">
+          <svg class="i" viewBox="0 0 20 20"><circle cx="10" cy="10" r="4" fill="currentColor" stroke="none"/></svg>
+          ${state.recording ? 'Press a key combo…' : 'Record combo'}</button>
+          <span class="note">US layout key positions</span></div></div>`,
+    text: () => `
+      <div class="field"><label for="f-text">Text to type</label>
+        <textarea id="f-text" maxlength="1024">${esc(a.text || '')}</textarea>
+        <span id="text-note">${textNote(a)}</span></div>
+      <div class="field"><label for="f-delay">Delay between characters (ms)</label>
+        <input type="number" id="f-delay" min="5" max="100" value="${a.charDelayMs ?? 10}"></div>`,
+    media: () => `
+      <div class="field"><label for="f-media">Media key</label>
+        <select id="f-media">${MEDIA_KEYS.map(k => `<option ${k === a.key ? 'selected' : ''}>${k}</option>`).join('')}</select></div>`,
+  }[a.type]();
+
+  $('editor').innerHTML = `
+    <h2><span class="sw-dot" style="background:${SWATCHES[t.color][0]}"></span>Edit tile</h2>
+    <div class="field"><label for="f-label">Label</label>
+      <input type="text" id="f-label" maxlength="24" value="${esc(t.label)}"></div>
+    <div class="field"><span class="lbl">Colour <span class="swatch-name">· ${t.color}</span></span>
+      <div class="swatches">${Object.entries(SWATCHES).map(([n, [c]]) =>
+        `<button class="swatch ${n === t.color ? 'on' : ''}" data-color="${n}" title="${n}" aria-label="${n}" style="background:${c}"></button>`).join('')}</div></div>
+    <div class="field"><span class="lbl">Style</span>
+      <div class="seg full"><button data-style="solid" class="${t.style !== 'soft' ? 'on' : ''}">Solid</button><button data-style="soft" class="${t.style === 'soft' ? 'on' : ''}">Soft</button></div></div>
+    <div class="field"><span class="lbl">Size</span>
+      <div class="seg full">${[[1,1],[2,1],[1,2],[2,2]].map(([w,h]) => `<button data-size="${w},${h}" class="${t.w === w && t.h === h ? 'on' : ''}">${w}×${h}</button>`).join('')}</div>
+      ${err ? `<span class="err">${esc(err)}</span>` : ''}</div>
+    <div class="field"><span class="lbl">Icon</span>
+      <div class="icons">${Object.keys(ICONS).map(n => `<button data-icon="${n}" class="${(t.icon || 'none') === n ? 'on' : ''}" title="${n}">${n === 'none' ? '<span class="note">none</span>' : svg(n)}</button>`).join('')}</div></div>
+    <div class="divider"></div>
+    <div class="field"><span class="lbl">Action</span>
+      <div class="seg full">${['keys', 'text', 'media'].map(k => `<button data-atype="${k}" class="${a.type === k ? 'on' : ''}">${{ keys: 'Key combo', text: 'Type text', media: 'Media key' }[k]}</button>`).join('')}</div></div>
+    ${actionFields}
+    <div class="editor-actions">
+      <button class="btn" id="try"><svg class="i" viewBox="0 0 20 20"><path d="M5 3v14l11-7z"/></svg>Try it</button>
+      <button class="btn danger" id="delete">Delete tile</button>
+    </div>`;
+}
+
+// ---- device settings view -------------------------------------------------
+function renderDevice() {
+  const s = config.settings;
+  $('stage').innerHTML = `
+    <div class="stage-head" style="max-width:760px"><h1 class="page-name" style="border:0;margin:0;padding:0">Device settings</h1></div>
+    <div class="cards">
+      <div class="card"><h3>Display</h3>
+        <div class="field"><span class="lbl">Grid density</span>
+          <div class="seg full"><button data-density="regular" class="${s.density === 'regular' ? 'on' : ''}">Regular 5×3</button><button data-density="compact" class="${s.density === 'compact' ? 'on' : ''}">Compact 6×4</button></div></div>
+        <div class="field"><label for="f-bright">Brightness <span class="swatch-name">· ${s.brightness}</span></label>
+          <input type="range" id="f-bright" min="10" max="255" value="${s.brightness}"></div>
+        <div class="field"><label for="f-dim">Dim after</label>
+          <select id="f-dim">${[[0,'Never'],[30,'30 seconds'],[60,'1 minute'],[120,'2 minutes'],[300,'5 minutes']].map(([v,l]) => `<option value="${v}" ${v === s.dimAfterSec ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      </div>
+      <div class="card"><h3>Wi-Fi<span class="state" style="color:var(--ok)">Connected</span></h3>
+        <dl class="kv"><dt>Network</dt><dd>Home-Net</dd><dt>Address</dt><dd>triggergrid.local</dd><dt>IP</dt><dd>192.168.1.42</dd><dt>Signal</dt><dd>−58 dBm</dd></dl>
+        <div class="row"><button class="btn small" data-toast="Scanning for networks…">Change network</button><button class="btn small" data-toast="Setup hotspot will start on reboot">Use setup hotspot</button></div>
+        <span class="note">The setup hotspot is TriggerGrid-7F3A. Its password and QR code are in the device menu on the pad.</span>
+      </div>
+      <div class="card"><h3>Bluetooth<span class="state" style="color:var(--ok)">Connected</span></h3>
+        <dl class="kv"><dt>Name</dt><dd>${esc(s.deviceName)}</dd><dt>Paired with</dt><dd>Desk-PC</dd></dl>
+        <div class="field"><label for="f-name">Device name</label><input type="text" id="f-name" maxlength="24" value="${esc(s.deviceName)}"></div>
+        <div class="field"><label for="f-os">Computer</label>
+          <select id="f-os">${Object.entries(HOST_OS).map(([k, o]) => `<option value="${k}" ${k === hostOS() ? 'selected' : ''}>${o.name}</option>`).join('')}</select>
+          <span class="note">${HOST_OS[hostOS()].how}</span></div>
+        <div class="field"><label for="f-layout">Computer's keyboard layout</label>
+          <select id="f-layout">${Object.entries(LAYOUTS).map(([k, l]) => `<option value="${k}" ${k === s.hostLayout ? 'selected' : ''}>${l.name}</option>`).join('')}</select>
+          <span class="note">Characters on this layout are typed as normal keys; anything else uses the computer's Unicode input above.</span></div>
+        <div class="row"><button class="btn small danger" data-toast="Bluetooth pairing cleared" data-color="var(--warn)">Forget paired computer</button></div>
+      </div>
+      <div class="card"><h3>Security<span class="state" style="color:var(--warn)">No PIN</span></h3>
+        <span class="note">Anyone on your network can change what this pad types. Set a PIN to protect the settings page.</span>
+        <div class="field"><label for="f-pin">Web PIN</label><input type="password" id="f-pin" inputmode="numeric" placeholder="4–8 digits"></div>
+        <div class="row"><button class="btn small" data-toast="PIN set">Set PIN</button></div>
+      </div>
+      <div class="card"><h3>Backup</h3>
+        <span class="note">The layout file holds pages, tiles and settings. Wi-Fi passwords and the PIN are never included.</span>
+        <div class="row"><button class="btn small" data-toast="Downloaded config.json">Export config.json</button><button class="btn small" data-toast="Choose a file…">Import</button></div>
+      </div>
+      <div class="card"><h3>About</h3>
+        <dl class="kv"><dt>Firmware</dt><dd>0.1.0 (M8)</dd><dt>Uptime</dt><dd>3 h 12 m</dd><dt>Free heap</dt><dd>142 KB</dd><dt>Free PSRAM</dt><dd>7.2 MB</dd></dl>
+        <div class="row"><button class="btn small" data-toast="Rebooting…" data-color="var(--warn)">Reboot</button><button class="btn small" data-toast="Checking for firmware…">Update firmware</button></div>
+      </div>
+    </div>`;
+}
+
+function render() {
+  renderSidebar();
+  $('main').classList.toggle('no-editor', state.view !== 'layout');
+  if (state.view === 'layout') { renderLayout(); renderEditor(); } else renderDevice();
+}
+
+// ---- events ----------------------------------------------------------------
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('button'); if (!el) return;
+  const d = el.dataset, t = tile();
+  if (d.page) { state.view = 'layout'; state.page = +d.page; state.tile = page().tiles[0]?.id; state.recording = false; return render(); }
+  if (d.view) { state.view = d.view; return render(); }
+  if (el.id === 'add-page') { config.pages.push({ id: 'page' + config.pages.length, name: 'New page', tiles: [] }); state.view = 'layout'; state.page = config.pages.length - 1; state.tile = null; markDirty(); return render(); }
+  if (d.tile) { state.tile = d.tile; state.recording = false; return render(); }
+  if (d.cell) {
+    const [x, y] = d.cell.split(',').map(Number), id = 't' + Date.now().toString(36);
+    page().tiles.push({ id, x, y, w: 1, h: 1, label: 'New', icon: 'none', color: 'graphite', style: 'solid', action: { type: 'keys', keys: ['F13'] } });
+    state.tile = id; markDirty(); return render();
+  }
+  if (d.density) { config.settings.density = d.density; markDirty(); return render(); }
+  if (d.color) { t.color = d.color; markDirty(); return render(); }
+  if (d.style) { t.style = d.style; markDirty(); return render(); }
+  if (d.icon) { t.icon = d.icon; markDirty(); return render(); }
+  if (d.size) { [t.w, t.h] = d.size.split(',').map(Number); markDirty(); return render(); }
+  if (d.atype && d.atype !== t.action.type) {
+    t.action = { keys: { type: 'keys', keys: ['F13'] }, text: { type: 'text', text: '', charDelayMs: 10 }, media: { type: 'media', key: 'PLAY_PAUSE' } }[d.atype];
+    markDirty(); return render();
+  }
+  if (d.delkey) { t.action.keys.splice(+d.delkey, 1); markDirty(); return render(); }
+  if (el.id === 'record') { state.recording = !state.recording; return renderEditor(); }
+  if (el.id === 'try') {
+    const c = compileAction(t.action);
+    if (c.error) return toast(c.error, 'var(--error)');
+    const body = JSON.stringify(c.a);   // exactly what POST /api/test would send
+    return toast(`Sent “${t.label}” to Desk-PC: ${body.length > 60 ? body.slice(0, 57) + '…' : body}`);
+  }
+  if (el.id === 'delete') { page().tiles = page().tiles.filter(o => o !== t); state.tile = null; markDirty(); return render(); }
+  if (el.id === 'save') {
+    const bad = saveProblems();
+    if (bad.length) return toast(`Can't save. ${bad[0]}${bad.length > 1 ? ` (+${bad.length - 1} more)` : ''}`, 'var(--error)');
+    const kb = (new Blob([savedFile()]).size / 1024).toFixed(1);
+    state.dirty = false; $('dirty').classList.remove('on'); $('save').disabled = true;
+    return toast(`Saved ${kb} KB. The pad has updated.`);
+  }
+  if (d.toast) return toast(d.toast, d.color);
+});
+
+document.addEventListener('input', (e) => {
+  const t = tile(), v = e.target.value;
+  switch (e.target.id) {
+    case 'f-label': t.label = v; break;
+    case 'f-text': t.action.text = v; break;
+    case 'f-delay': t.action.charDelayMs = +v; break;
+    case 'f-media': t.action.key = v; break;
+    case 'page-name': page().name = v; break;
+    case 'f-bright': config.settings.brightness = +v; e.target.previousElementSibling.querySelector('.swatch-name').textContent = '· ' + v; markDirty(); return;
+    case 'f-dim': config.settings.dimAfterSec = +v; markDirty(); return;
+    case 'f-name': config.settings.deviceName = v; markDirty(); return;
+    case 'f-layout': config.settings.hostLayout = v; markDirty(); return;
+    case 'f-os': config.settings.hostOS = v; markDirty(); return render();
+    default: return;
+  }
+  markDirty();
+  // Update the preview without re-rendering the field being typed in.
+  renderSidebar();
+  const stage = $('stage').querySelector('.device-wrap');
+  if (stage) { stage.outerHTML = renderPreview(); fitDevice(); }
+  updateJson();
+  if (e.target.id === 'f-text') $('text-note').innerHTML = textNote(tile().action);
+});
+
+// "Record combo": capture modifiers + one key and map to config-schema key names.
+const CODE_NAMES = { Enter: 'ENTER', Escape: 'ESC', Tab: 'TAB', Space: 'SPACE', Backspace: 'BACKSPACE', Delete: 'DELETE',
+  Insert: 'INSERT', Home: 'HOME', End: 'END', PageUp: 'PAGE_UP', PageDown: 'PAGE_DOWN', ArrowUp: 'UP', ArrowDown: 'DOWN',
+  ArrowLeft: 'LEFT', ArrowRight: 'RIGHT', Minus: 'MINUS', Equal: 'EQUAL', BracketLeft: 'LBRACKET', BracketRight: 'RBRACKET',
+  Backslash: 'BACKSLASH', Semicolon: 'SEMICOLON', Quote: 'QUOTE', Backquote: 'GRAVE', Comma: 'COMMA', Period: 'PERIOD', Slash: 'SLASH',
+  PrintScreen: 'PRINT_SCREEN', CapsLock: 'CAPS_LOCK' };
+document.addEventListener('keydown', (e) => {
+  if (!state.recording) return;
+  if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;   // wait for the non-modifier key
+  e.preventDefault();
+  const name = /^Key[A-Z]$/.test(e.code) ? e.code.slice(3) : /^Digit\d$/.test(e.code) ? e.code.slice(5)
+             : /^F\d{1,2}$/.test(e.code) ? e.code : CODE_NAMES[e.code];
+  if (!name) return toast(`${e.code} isn't supported`, 'var(--error)');
+  const keys = [];
+  if (e.ctrlKey) keys.push('CTRL'); if (e.shiftKey) keys.push('SHIFT'); if (e.altKey) keys.push('ALT'); if (e.metaKey) keys.push('GUI');
+  tile().action.keys = [...keys, name]; state.recording = false; markDirty(); render();
+});
+
+// ---- drag and drop ------------------------------------------------------------
+// Three kinds of drag, all snapping to the grid of the current density:
+//   move   — pick up a tile on the screen; drop on the tray to delete it
+//   new    — drag a template out of the tray
+//   resize — drag the white corner handle of the selected tile (1×1 … 2×2)
+// A press that moves less than 5 px is a normal click (select / edit).
+let drag = null, suppressClick = false;
+
+function screenGeom() {
+  const scr = document.querySelector('.screen'), r = scr.getBoundingClientRect();
+  return { scr, r, s: r.width / 480, g: GRID[config.settings.density] };
+}
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+document.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0 || state.view !== 'layout') return;
+  const el = e.target.closest('.screen .tile, .tray-item, .resize');
+  if (!el) return;
+  drag = { el, x0: e.clientX, y0: e.clientY, started: false,
+           kind: el.dataset.resize ? 'resize' : el.dataset.template ? 'new' : 'move' };
+  if (drag.kind === 'move') drag.tile = page().tiles.find(t => t.id === el.dataset.tile);
+  if (drag.kind === 'resize') drag.tile = page().tiles.find(t => t.id === el.dataset.resize);
+  if (drag.kind === 'new') drag.tile = { ...TEMPLATES[+el.dataset.template], id: 'ghost', x: 0, y: 0, w: 1, h: 1 };
+});
+
+function startDrag(e) {
+  const { scr, r, s, g } = screenGeom();
+  drag.started = true; drag.spot = null;
+  document.body.classList.add('dragging');
+  drag.ind = document.createElement('div'); drag.ind.className = 'drop-ind'; drag.ind.hidden = true;
+  scr.appendChild(drag.ind);
+  if (drag.kind === 'resize') return;
+  // The ghost is the real tile, drawn at the preview's scale, following the pointer.
+  const t = drag.tile, size = tileRect({ ...t, x: 0, y: 0 }, g);
+  const box = drag.kind === 'move' ? drag.el.getBoundingClientRect() : null;
+  drag.off = box ? { x: drag.x0 - box.left, y: drag.y0 - box.top } : { x: size.width * s / 2, y: size.height * s / 2 };
+  drag.ghost = document.createElement('div');
+  drag.ghost.className = 'ghost ' + config.settings.density;
+  drag.ghost.innerHTML = tileHTML(t, { left: 0, top: 0, width: size.width, height: size.height });
+  document.body.appendChild(drag.ghost);
+  if (drag.kind === 'move') { drag.el.classList.add('drag-src'); $('tray').classList.add('trash'); }
+}
+
+document.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  if (!drag.started) {
+    if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 5) return;
+    startDrag(e);
+  }
+  e.preventDefault();
+  const { r, s, g } = screenGeom(), t = drag.tile;
+  const over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+  let spot = null;
+  if (drag.kind === 'resize') {
+    // The cell under the pointer sets the far corner; spans are limited to 1–2 cells.
+    const col = Math.floor(((e.clientX - r.left) / s - g.padX) / (g.w + g.gap));
+    const row = Math.floor(((e.clientY - r.top) / s - STATUS_H - g.padY) / (g.h + g.gap));
+    spot = { x: t.x, y: t.y, w: clamp(col - t.x + 1, 1, 2), h: clamp(row - t.y + 1, 1, 2) };
+  } else {
+    const gx = e.clientX - drag.off.x, gy = e.clientY - drag.off.y;
+    drag.ghost.style.transform = `translate(${gx}px, ${gy}px) scale(${s})`;
+    if (over) {
+      // Snap the ghost's top-left corner to the nearest cell, kept inside the grid.
+      const lx = (gx - r.left) / s, ly = (gy - r.top) / s;
+      spot = { w: t.w, h: t.h,
+               x: clamp(Math.round((lx - g.padX) / (g.w + g.gap)), 0, g.cols - t.w),
+               y: clamp(Math.round((ly - STATUS_H - g.padY) / (g.h + g.gap)), 0, g.rows - t.h) };
+    }
+    if (drag.kind === 'move') {
+      const tr = $('tray').getBoundingClientRect();
+      drag.overTrash = e.clientX >= tr.left && e.clientX <= tr.right && e.clientY >= tr.top && e.clientY <= tr.bottom;
+      $('tray').classList.toggle('hot', drag.overTrash);
+    }
+  }
+  drag.spot = spot;
+  drag.ind.hidden = !spot;
+  if (spot) {
+    drag.err = placeError(spot, page(), drag.kind === 'new' ? null : t);
+    drag.ind.classList.toggle('bad', !!drag.err);
+    drag.ghost?.classList.toggle('bad', !!drag.err);
+    drag.ind.style.cssText = px(tileRect(spot, g));
+  }
+});
+
+function endDrag(commit) {
+  const d = drag; drag = null;
+  if (!d || !d.started) return;
+  suppressClick = true; setTimeout(() => { suppressClick = false; }, 0);
+  document.body.classList.remove('dragging');
+  d.ghost?.remove(); d.ind?.remove();
+  if (commit) {
+    if (d.kind === 'move' && d.overTrash) {
+      page().tiles = page().tiles.filter(t => t !== d.tile);
+      if (state.tile === d.tile.id) state.tile = null;
+      markDirty(); toast(`Deleted “${d.tile.label}”`, 'var(--warn)');
+    } else if (d.spot && d.err) {
+      toast(`Can't place it there. ${d.err}`, 'var(--error)');
+    } else if (d.spot) {
+      if (d.kind === 'new') { const t = newTile(d.tile, d.spot); page().tiles.push(t); state.tile = t.id; }
+      else { Object.assign(d.tile, d.spot); state.tile = d.tile.id; }
+      markDirty();
+    }
+  }
+  render();
+}
+document.addEventListener('pointerup', () => endDrag(true));
+document.addEventListener('pointercancel', () => endDrag(false));
+// A drag ends with a click on whatever is under the pointer; swallow it.
+document.addEventListener('click', (e) => { if (suppressClick) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+
+// Keyboard: arrow keys move the focused tile one cell, if the new spot is free.
+document.addEventListener('keydown', (e) => {
+  if (state.recording) return;
+  const el = document.activeElement?.closest?.('.screen .tile');
+  const step = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (!el || !step) return;
+  e.preventDefault();
+  const t = page().tiles.find(o => o.id === el.dataset.tile);
+  const spot = { x: t.x + step[0], y: t.y + step[1], w: t.w, h: t.h };
+  const err = placeError(spot, page(), t);
+  if (err) return toast(err, 'var(--error)');
+  Object.assign(t, spot); state.tile = t.id; markDirty(); render();
+  document.querySelector(`.screen .tile[data-tile="${t.id}"]`)?.focus();
+});
+
+window.addEventListener('resize', fitDevice);
+render();
+</script>
+</body>
+</html>

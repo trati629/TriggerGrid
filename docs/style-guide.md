@@ -197,6 +197,17 @@ The web page applies the same rules to a browser layout.
   or scaled to fit on phones), using the same tile sizes, radii and colours.
 - Tap a tile in the preview to edit it in a side sheet (a bottom sheet on phones) on `surface-2`:
   label, icon, colour swatch picker, style, span, action.
+- **Drag and drop** places tiles on the preview. It uses pointer events so mouse and touch both work:
+  - **Add:** drag a blank tile or a preset from the *Add tiles* tray (below the preview) onto the screen.
+  - **Move:** drag a tile. A press that moves less than 5 px is a tap and opens the editor instead.
+  - **Resize:** drag the corner handle of the selected tile: a 20 px `text` square with a
+    2 px `bg` border. Spans stay within 1–2 cells.
+  - **Delete:** drag a tile back onto the tray. While a tile is dragged the tray turns into a dashed
+    "Drop here to delete" zone, which goes `error` when the pointer is over it.
+  - While dragging, the tile follows the pointer at 85% opacity with a 2 px `text` outline, and a
+    dashed outline snaps to the grid cell it would land in. Both turn `error` when the spot is
+    taken or off the grid. Dropping there does nothing and shows why.
+  - Keyboard: arrow keys move the focused tile one cell.
 - The key combo editor shows keys as keycaps: `surface-3` fill, 1 px `line` border, 6 px
   radius, JetBrains Mono.
 - Buttons: the primary action (Save to device) uses a `text` background with `on-bright` text.
@@ -204,8 +215,9 @@ The web page applies the same rules to a browser layout.
   `line` outline.
 - Radius: 12 px for panels, 8 px for inputs and buttons.
 - Spacing scale: 4, 8, 12, 16, 24, 32.
-- The page is plain HTML/CSS/JS served from LittleFS, with no build step and no CDN (it must work
-  in AP mode with no internet). Fonts are self-hosted WOFF2 subsets in `data/`.
+- The page is plain HTML/CSS/JS in `web/`, with no framework and no CDN (it must work in AP mode
+  with no internet). It is gzipped into the firmware at build time. Fonts are self-hosted WOFF2
+  subsets in `web/fonts/`. Keep them small (Latin subset, 2 weights): every byte ships in the firmware.
 
 ### CSS tokens
 
@@ -221,7 +233,10 @@ The web page applies the same rules to a browser layout.
 
 ### LVGL tokens
 
-Define once in `src/ui/theme.h` and never write a hex value anywhere else in UI code:
+Define the interface (chrome) tokens once in `src/ui/theme.h` and never write a hex value anywhere
+else in UI code. Tile colours are **not** in firmware: the browser compiles swatch names and the
+solid/soft style into final RGB values in the `pad` section (see the config schema), and the
+firmware draws them as given.
 
 ```cpp
 namespace theme {
@@ -229,6 +244,6 @@ inline lv_color_t bg()        { return lv_color_hex(0x101112); }
 inline lv_color_t surface1()  { return lv_color_hex(0x1A1C1E); }
 inline lv_color_t surface2()  { return lv_color_hex(0x24272A); }
 inline lv_color_t text()      { return lv_color_hex(0xF2F3F4); }
-// ...one function per token; swatches looked up by name from a table.
+// ...one function per chrome token. No swatch table here: tile colours arrive compiled.
 }
 ```

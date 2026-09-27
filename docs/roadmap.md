@@ -57,22 +57,43 @@ Status key: ✅ done · 🔜 next · ⬜ planned
 
 - `src/hid/`: NimBLE-Arduino 2.x HID device with a keyboard report and a consumer-control report,
   battery service (fixed 100%), bonding, and auto-reconnect.
-- `src/actions/`: FreeRTOS queue + task on core 0; `keys` and `media` actions; key-name table.
-- Wire the M4 tiles to real actions. The status bar shows BLE state.
+  - The keyboard report descriptor's usage range must reach at least `0x73`. Many examples stop at
+    `0x65`, which silently drops F13–F24.
+  - Include the LED **output** report, so the pad can read the computer's NumLock state.
+- `src/actions/`: FreeRTOS queue + task on core 0 that runs the three compiled action types from
+  the [config schema](config-schema.md#compiled-actions): key chord, consumer key and
+  keystroke list. Keystroke lists follow the schema's *Keystroke rules* (modifiers held
+  between same-modifier keystrokes, `0000` release, NumLock handling). The firmware works in HID
+  codes only and has no key-name table.
+- Wire the M4 tiles to real actions, with the codes written directly in the hard-coded layout
+  (Ctrl+C = modifier `0x01`, usage `0x06`). The status bar shows BLE state.
 - Test pairing with Windows, macOS, Linux, and at least one phone.
-- **Done when:** a tile tap types Ctrl+C / plays or pauses media on each OS, and the pad reconnects
-  after a power cycle without pairing again.
+- Test Unicode typing with hard-coded keystroke lists for `é` and `👋` on each OS (see the method
+  table in the schema). The mockup's compiler produces the lists: set *Computer* in Settings,
+  type the text, and copy the `s` value from the *pad* pane.
+- **Done when:** a tile tap types Ctrl+C / plays or pauses media on each OS; `é` types correctly
+  on each OS and `👋` on macOS and Linux; and the pad reconnects after a power cycle without
+  pairing again.
 - Risk: BLE HID behaviour differs across OSes. Leave time for this milestone.
 
-## ⬜ M6 — Config file
+## ⬜ M6 — Layout compiler and pad reader
 
-- `src/config/`: load `config.json` with ArduinoJson, validate (grid fit, overlaps, key names,
-  lengths), and fall back to built-in defaults.
-- `text` action: US-layout character → key table, per-character delay.
-- UI builds its pages from `Config` instead of hard-coded data.
-- Native unit tests in `test/` for validation and the character map (`pio test -e native`).
-- **Done when:** editing `data/config.json` and running `uploadfs` changes the pad's layout, and an
-  invalid file shows a status-bar warning instead of crashing.
+This milestone has two halves. The browser half needs no hardware.
+
+- **Browser (`web/lib/`):** `compile.js` turns the `editor` section into the `pad` section
+  (swatches → RGB, icon names → indexes, key names → HID codes, text → keystroke hex using
+  `keymap.js`, `layouts/us.js` and `unicode.js` for the per-OS Unicode input methods). Also
+  `validate.js` for the grid rules.
+- **Browser tests:** `web/test.html` runs in any browser and checks the compiler against known
+  answers (Ctrl+C, `"Cheers,\nAlex"`, a soft tile's mixed colour, `é` and `👋` on each OS). It also has a *Download
+  default config* button that writes `data/config.json`.
+- **Firmware (`src/config/`):** read only the `pad` section with an ArduinoJson filter into a `Pad`
+  struct in PSRAM, run the bounds checks, and fall back to the built-in default.
+- UI builds its pages from `Pad` instead of hard-coded data.
+- Native unit tests in `test/` for the bounds checks (`pio test -e native`).
+- **Done when:** the compiler tests pass in the browser; flashing a compiled `data/config.json`
+  with `uploadfs` changes the pad's layout; and a corrupted or oversized file shows a status-bar
+  warning instead of crashing.
 
 ## ⬜ M7 — Wi-Fi with AP fallback
 
@@ -81,24 +102,32 @@ Status key: ✅ done · 🔜 next · ⬜ planned
 - Device menu (tap status bar): brightness, Wi-Fi info with QR code, Forget Bluetooth, About.
 - **Done when:** a fresh device starts in AP mode, and a phone can join by scanning the QR code.
 
-## ⬜ M8 — Web API
+## ⬜ M8 — Web server and API
 
-- `src/web/`: routes from [architecture.md](architecture.md#web-api), static files from LittleFS.
-- Minimal `data/index.html`: status, Wi-Fi setup form, raw JSON editor for the config.
-- `POST /api/test` to try an action without saving.
+- `tools/embed_web.py`: PlatformIO pre-build script that gzips `web/` into
+  `src/web/web_assets.h` (see [architecture.md](architecture.md#web-app-delivery)).
+- `src/web/`: web task on core 0, embedded files with `ETag` / `304`, the API routes from
+  [architecture.md](architecture.md#web-api), request size limits, and the save flow (stream to
+  a temporary file, check `pad`, rename).
+- `web/`: first real page: status (polled every 5 s), Wi-Fi setup, and a raw JSON editor that
+  compiles and saves. It also includes `mock-device.js`, so the page works from `file://` with no device.
 - **Done when:** you can set home Wi-Fi from the AP page, then reach the device at
-  `triggergrid.local` and change a tile over the network.
-- Check: typing with a tile while saving a config from the browser shows no noticeable lag
-  (Wi-Fi and BLE share the radio).
+  `triggergrid.local` and change a tile over the network. A second visit to the page transfers
+  only `304` responses.
+- Measure: free SRAM before, during and after a page load and a save (log to serial). Typing
+  with a tile while saving shows no noticeable lag (Wi-Fi and BLE share the radio).
 
 ## ⬜ M9 — Visual web editor
+
+Design reference: [mockups/web-config.html](mockups/web-config.html) (see [mockups/README.md](mockups/README.md)).
+All of this is browser code: no firmware changes expected.
 
 - True-scale preview of each page using the same tokens (see style guide).
 - Tap a tile to edit it: label, icon, swatch picker, style, span, action editor with keycap input
   ("press the combo" capture in the browser).
 - Drag to move, add and delete tiles and pages, and a density switch with warnings for tiles that
   don't fit.
-- Export and import `config.json`. Optional web PIN.
+- Export and import `config.json` (the browser recompiles `pad` on import). Optional web PIN.
 - **Done when:** someone who has never seen the JSON can build a page from a phone.
 
 ## ⬜ M10 — Polish
@@ -113,7 +142,7 @@ Status key: ✅ done · 🔜 next · ⬜ planned
 ## Later ideas
 
 - `sequence` action (steps with delays) and `page` action (jump to a page).
-- Keyboard layouts other than US for the `text` action.
+- Keyboard layouts other than US for the `text` action (browser-only: add a file in `web/lib/layouts/`).
 - Mouse report (scroll or jog tile).
 - Multiple bonded hosts with a switcher.
 - Printed enclosure files.
