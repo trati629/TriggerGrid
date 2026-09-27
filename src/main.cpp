@@ -1,14 +1,14 @@
 // TriggerGrid — touchscreen BLE macro pad for the Guition JC3248W535.
 //
 // Entry point. Each module listed in docs/architecture.md is brought up in
-// order by the milestones in docs/roadmap.md. M2: LVGL draws a landscape
-// test screen through the transposing flush.
+// order by the milestones in docs/roadmap.md. M3: touch test screen.
 
 #include <Arduino.h>
 #include "board_pins.h"
 #include "diag/diag.h"
 #include "display/display.h"
 #include "lvgl_glue/lvgl_glue.h"
+#include "touch/touch.h"
 
 constexpr uint8_t  BOOT_BRIGHTNESS = 180;   // matches the config default
 constexpr uint32_t BACKLIGHT_RAMP_MS = 1000;
@@ -44,14 +44,18 @@ void setup() {
     if (!display_init()) {
         halt("display: init FAILED (see hardware doc §P1)");
     }
+    if (!touch_init()) {
+        // Keep going: the screen still works, and serial says what's wrong.
+        Serial.println("touch: no answer from the chip at 0x3B (check I2C pins)");
+    }
     if (!lvgl_glue_init()) {
         halt("lvgl: could not allocate frame buffers");
     }
 
-    diag_show_corners();
+    diag_show_touch();
     lvgl_glue_update();   // render the first frame before the backlight comes up
     display_ramp_backlight(BOOT_BRIGHTNESS, BACKLIGHT_RAMP_MS);
-    Serial.println("lvgl: corner test screen shown");
+    Serial.println("touch: test screen shown");
 }
 
 void loop() {

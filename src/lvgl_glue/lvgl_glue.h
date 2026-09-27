@@ -1,4 +1,4 @@
-// lvgl_glue.h — connects LVGL to the display (and, from M3, the touch panel).
+// lvgl_glue.h — connects LVGL to the display and the touch panel.
 //
 // LVGL draws a 480×320 landscape screen. The flush callback turns each frame
 // onto the 320×480 portrait panel and pushes it whole (hardware doc,
@@ -14,8 +14,8 @@ struct FlushStats {
     uint32_t frames;         // frames flushed since boot
 };
 
-// lv_init(), the two PSRAM frame buffers and the LVGL display.
-// Returns false if PSRAM is missing.
+// lv_init(), the two PSRAM frame buffers, the LVGL display and the touch
+// input device. Call touch_init() first. Returns false if PSRAM is missing.
 bool lvgl_glue_init();
 
 // Advance LVGL's clock and run its timers. Call on every loop() pass.

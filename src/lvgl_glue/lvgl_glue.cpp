@@ -7,6 +7,7 @@
 
 #include "board_pins.h"
 #include "display/display.h"
+#include "touch/touch.h"
 
 // LVGL renders the landscape screen into s_draw_buf. The flush callback
 // rotates it into s_panel_buf, laid out the way the portrait panel expects.
@@ -54,6 +55,17 @@ static void flush_cb(lv_display_t* disp, const lv_area_t* area, uint8_t* px_map)
     lv_display_flush_ready(disp);
 }
 
+// LVGL polls this during lv_timer_handler(). The touch module has already
+// turned the point into landscape coordinates.
+static void touch_read_cb(lv_indev_t* indev, lv_indev_data_t* data) {
+    (void)indev;
+    int16_t x, y;
+    bool down = touch_get(&x, &y);
+    data->point.x = x;
+    data->point.y = y;
+    data->state = down ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+}
+
 bool lvgl_glue_init() {
     const size_t frame_bytes = (size_t)SCREEN_W * SCREEN_H * sizeof(uint16_t);
     s_draw_buf  = (uint16_t*)ps_malloc(frame_bytes);
@@ -74,6 +86,10 @@ bool lvgl_glue_init() {
     lv_display_set_buffers(s_display, s_draw_buf, nullptr, frame_bytes,
                            LV_DISPLAY_RENDER_MODE_FULL);
     lv_display_set_flush_cb(s_display, flush_cb);
+
+    lv_indev_t* indev = lv_indev_create();
+    lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(indev, touch_read_cb);
 
     s_last_tick_ms = millis();
     return true;

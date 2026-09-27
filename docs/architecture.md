@@ -109,7 +109,8 @@ LVGL is **not thread-safe**. The rule:
 
 | Task              | Core | Stack | Owns                                  | Talks to others via |
 |-------------------|------|-------|---------------------------------------|---------------------|
-| `loop()`          | 1    | 8 KB  | LVGL, touch, reading `config.json`    | Pushes actions onto `action_queue` |
+| `loop()`          | 1    | 8 KB  | LVGL, reading `config.json`    | Pushes actions onto `action_queue` |
+| `touch` task      | 0    | 3 KB  | I2C reads of the touch chip           | Woken by the INT pin; keeps the latest point for LVGL's input callback |
 | `web` task        | 0    | 8 KB  | `WebServer`, writing `config.json`    | Sets `config_dirty`; pushes "Try it" actions onto `action_queue` |
 | `actions` task    | 0    | 4 KB  | Running action steps (with delays)    | Reads `action_queue`, calls `hid_*` |
 | NimBLE host       | 0    | —     | BLE stack (created by NimBLE)         | Sets connection state atomically |
@@ -119,6 +120,9 @@ LVGL is **not thread-safe**. The rule:
   `config_dirty` flag. On its next pass, `loop()` re-reads the `pad` section and rebuilds the screens.
 - **Only the web task writes `config.json`,** and it writes a temporary file first, then renames it
   (see *Saving*). The UI only reads the file after the rename, so it never sees a half-written file.
+- **Touch is read in its own task.** The chip's data is only valid for a moment after each INT
+  pulse, and a frame flush in `loop()` takes tens of milliseconds, so waiting for `loop()` would
+  miss it.
 - Typing a long string takes time (one key down/up per character at 8–15 ms). This happens in
   the `actions` task so neither the UI nor the web page freezes.
 - The web task sits at a lower priority than the Wi-Fi and BLE stacks, so a page load can't delay

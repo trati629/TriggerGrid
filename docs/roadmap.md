@@ -37,12 +37,14 @@ Status key: ✅ done · 🧪 written and builds, not yet checked on the board ·
 - **Done when:** the labels are in the right corners with the USB port where the enclosure puts it,
   and a full frame takes < 40 ms.
 
-## ⬜ M3 — Touch
+## 🧪 M3 — Touch
 
 - `src/touch/`: I2C at 400 kHz, the 8-byte unlock + full STOP before every read, INT on GPIO 3 sets a
   flag, 80 ms release timeout.
 - Map portrait to landscape (`lx = py`, `ly = 319 − px`) so it matches the flush transpose.
 - Register as an LVGL pointer `indev`.
+- The chip is read in a small task on core 0, woken by INT, because its data goes stale within
+  about 1 ms. While a finger is down the task also polls every 20 ms.
 - Test screen: a dot follows your finger, and there's a button in each corner.
 - **Done when:** all four corner buttons respond, and a single tap fires `LV_EVENT_CLICKED` exactly once.
 
