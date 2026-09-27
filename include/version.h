@@ -1,4 +1,4 @@
 // version.h — firmware version, shown in the device menu and /api/status.
 #pragma once
 
-constexpr const char* FW_VERSION = "0.7.0";
+constexpr const char* FW_VERSION = "0.8.0";

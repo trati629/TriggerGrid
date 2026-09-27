@@ -125,7 +125,7 @@ This milestone has two halves. The browser half needs no hardware.
   NVS, mDNS, async scan for M8) and `src/ui/menu.cpp` (tap the status bar; hold it 3 s for the
   hotspot). Brightness from the menu lasts until the next reboot or layout save.
 
-## ⬜ M8 — Web server and API
+## 🧪 M8 — Web server and API
 
 - `tools/embed_web.py`: PlatformIO pre-build script that gzips `web/` into
   `src/web/web_assets.h` (see [architecture.md](architecture.md#web-app-delivery)).
@@ -139,6 +139,10 @@ This milestone has two halves. The browser half needs no hardware.
   only `304` responses.
 - Measure: free SRAM before, during and after a page load and a save (log to serial). Typing
   with a tile while saving shows no noticeable lag (Wi-Fi and BLE share the radio).
+- Built: `tools/embed_web.py`, `src/web/web.cpp` (all routes, PIN, ETag/304, 4 KB and 32 KB body
+  limits, tmp-check-rename save) and a first `web/` page: status chips, Wi-Fi scan and join, PIN,
+  backup, and a `config.json` view that compiles and saves. Oversized bodies are read and dropped
+  rather than refused before reading (the core `WebServer` always reads the body).
 
 ## ⬜ M9 — Visual web editor
 

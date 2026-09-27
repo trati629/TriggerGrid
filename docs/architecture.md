@@ -229,8 +229,9 @@ Responses are small. Only `/api/status` and `/api/wifi/scan` build JSON on the d
 | POST   | `/api/pin`        | `{ "old", "new" }`: set or change the web PIN | NVS write |
 | POST   | `/api/reboot`     | — | — |
 
-Request limits, checked from `Content-Length` before reading the body: 32 KB for
-`/api/config`, 4 KB for everything else. Anything larger gets a `413` without being read.
+Request limits, checked from `Content-Length`: 32 KB for `/api/config`, 4 KB for everything
+else. Anything larger gets a `413`. The core `WebServer` still reads the body off the socket, but
+the web task drops it instead of storing it.
 
 ## Security
 

@@ -1,8 +1,7 @@
 // TriggerGrid — touchscreen BLE macro pad for the Guition JC3248W535.
 //
 // Entry point. Each module listed in docs/architecture.md is brought up in
-// order by the milestones in docs/roadmap.md. M7: Wi-Fi with a setup
-// hotspot, and the device menu.
+// order by the milestones in docs/roadmap.md. M8: the web page and its API.
 
 #include <Arduino.h>
 #include "actions/actions.h"
@@ -16,6 +15,7 @@
 #include "ui/menu.h"
 #include "ui/ui.h"
 #include "version.h"
+#include "web/web.h"
 
 constexpr uint32_t BACKLIGHT_RAMP_MS = 1000;
 constexpr uint32_t STATS_PERIOD_MS = 5000;
@@ -120,6 +120,9 @@ void setup() {
     Serial.printf("ble: advertising as \"%s\"\n", pad.name);
 
     net_begin(pad.name);
+    if (!web_begin()) {
+        Serial.println("web: could not start the web task");
+    }
 
     lvgl_glue_update();   // render the first frame before the backlight comes up
     display_ramp_backlight(pad.brightness, BACKLIGHT_RAMP_MS);
