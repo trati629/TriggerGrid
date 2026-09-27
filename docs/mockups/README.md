@@ -11,6 +11,10 @@ double-click it. Add `#settings` to the URL to open the settings view directly.
 
 ![Dragging a preset from the tray onto the screen](../images/web-config-drag.png)
 
+| The config.json panel: editor vs compiled pad | Text the keyboard layout can't type |
+|---|---|
+| ![config.json panel showing the editor and pad sections side by side](../images/web-config-json.png) | ![Text box with a red error listing ë and an emoji](../images/web-config-text-error.png) |
+
 | Settings view | Phone layout |
 |---|---|
 | ![Device settings](../images/web-config-settings.png) | <img src="../images/web-config-phone.png" width="260" alt="Phone layout: page tabs across the top, scaled preview, tile editor as a bottom sheet"> |
@@ -28,6 +32,15 @@ double-click it. Add `#settings` to the URL to open the settings view directly.
   updates as you go.
 - Tap an empty `+` cell to add a blank tile there, or delete a tile from the editor.
 - All placement follows the grid rules from the config schema (must fit the grid, no overlaps).
+- **The layout compiler runs in the page**, exactly as the real one will. The *config.json*
+  panel shows the human-readable `editor` section next to the compiled `pad` section, the only
+  part the device reads, and updates as you edit. Watch `CTRL` + `C` become `"m": 1, "k": [6]`.
+  Below them, a meter shows the whole file's size against the device's 32 KB limit.
+- **Typed text is checked against the computer's keyboard layout** (Settings → Bluetooth →
+  *Computer's keyboard layout*; US English for now). Characters that layout can't type, like
+  `ë` or emoji, are listed under the text box, and *Try it* and *Save* are blocked until they're gone.
+- *Try it* shows the compiled action it would send to `POST /api/test`, and *Save* shows the
+  size of the file it would upload.
 - **Record combo:** press a key combination and it's converted to config key names (`CTRL`, `SHIFT`, `M`).
 - Switch density between Regular 5×3 and Compact 6×4.
 - *config.json for this page* shows the live JSON in the [config schema](../config-schema.md) format.
@@ -37,9 +50,8 @@ buttons only show a message. Status values (IP, signal, heap) are placeholders.
 
 **How it maps to the real page:** the real `web/index.html` (M8/M9) can start from this file. The
 data model, grid maths, swatch table and key-name mapping are already the ones the firmware will
-use. What changes is loading and saving through `GET`/`PUT /api/config`, and compiling the
-`pad` section before saving (see the [config schema](../config-schema.md#the-pad-section-compiled)).
-The *config.json* panel in the mockup shows the `editor` section.
+use, and so is the compiler (the *compiler* section of the script moves to `web/lib/` in M6). What
+changes is loading and saving through `GET`/`PUT /api/config`.
 
 **Design notes:**
 - The device preview is drawn at 1:1 (480×320 plus bezel) using the style-guide grid numbers, and

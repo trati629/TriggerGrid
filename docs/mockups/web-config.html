@@ -185,8 +185,15 @@ textarea { height: 88px; padding: 8px 10px; resize: vertical; font-family: var(-
 .kv dt { color: var(--text-muted); } .kv dd { margin: 0; font-family: var(--mono); font-size: 12px; text-align: right; }
 input[type=range] { width: 100%; accent-color: var(--text); }
 .json { width: 100%; max-width: 760px; }
-.json pre { margin: 0; max-height: 280px; overflow: auto; background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius-panel);
+.json-panes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.json-panes > div { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.json-title { font-size: 12px; color: var(--text); font-weight: 500; }
+.json-title .note { font-weight: 400; }
+.json pre { margin: 0; height: 300px; overflow: auto; background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--radius-panel);
             padding: 12px 16px; font: 12px/1.5 var(--mono); color: var(--text-muted); }
+.json-foot { margin-top: 8px; font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 10px; }
+.meter { flex: 0 0 120px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--ok); }
 details summary { cursor: pointer; color: var(--text-muted); font-size: 13px; padding: 4px 0; }
 
 /* ---------- toast ---------- */
@@ -213,6 +220,7 @@ details summary { cursor: pointer; color: var(--text-muted); font-size: 13px; pa
   .editor::before { content: ''; align-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--line); margin-bottom: -8px; }
   .divider { margin: 0 -16px; }
   .cards { grid-template-columns: 1fr; }
+  .json-panes { grid-template-columns: 1fr; }
   .tray-items { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }   /* swipe sideways on phones */
 }
 </style>
@@ -287,12 +295,123 @@ const ICONS = {
   none: '',
 };
 const MEDIA_KEYS = ['PLAY_PAUSE','NEXT_TRACK','PREV_TRACK','STOP','MUTE','VOLUME_UP','VOLUME_DOWN','BRIGHTNESS_UP','BRIGHTNESS_DOWN'];
+
+// ---- compiler: editor section → pad section (docs/config-schema.md) ---------
+// This is the browser half of "thin device, smart browser": the firmware gets
+// numbers only and has none of these tables. Destined for web/lib/ in M6.
+const COLOR_HEX = { 'var(--text)': 'F2F3F4', 'var(--on-bright)': '0E0F10' };
+const SURFACE_1 = '1A1C1E';
+const MODIFIERS = { CTRL: 0x01, LCTRL: 0x01, SHIFT: 0x02, LSHIFT: 0x02, ALT: 0x04, LALT: 0x04, GUI: 0x08, LGUI: 0x08,
+                    RCTRL: 0x10, RSHIFT: 0x20, RALT: 0x40, RGUI: 0x80 };
+// HID keyboard usage codes (USB HID Usage Tables, page 0x07).
+const USAGE = { ENTER: 0x28, ESC: 0x29, BACKSPACE: 0x2A, TAB: 0x2B, SPACE: 0x2C, MINUS: 0x2D, EQUAL: 0x2E,
+  LBRACKET: 0x2F, RBRACKET: 0x30, BACKSLASH: 0x31, SEMICOLON: 0x33, QUOTE: 0x34, GRAVE: 0x35, COMMA: 0x36,
+  PERIOD: 0x37, SLASH: 0x38, CAPS_LOCK: 0x39, PRINT_SCREEN: 0x46, INSERT: 0x49, HOME: 0x4A, PAGE_UP: 0x4B,
+  DELETE: 0x4C, END: 0x4D, PAGE_DOWN: 0x4E, RIGHT: 0x4F, LEFT: 0x50, DOWN: 0x51, UP: 0x52 };
+for (let i = 0; i < 26; i++) USAGE[String.fromCharCode(65 + i)] = 0x04 + i;          // A–Z
+for (let i = 1; i <= 9; i++) USAGE[String(i)] = 0x1E + i - 1;  USAGE['0'] = 0x27;    // 1–9, 0
+for (let i = 1; i <= 12; i++) USAGE['F' + i] = 0x3A + i - 1;                         // F1–F12
+for (let i = 13; i <= 24; i++) USAGE['F' + i] = 0x68 + i - 13;                       // F13–F24
+// HID consumer usage codes (page 0x0C).
+const CONSUMER = { PLAY_PAUSE: 0xCD, NEXT_TRACK: 0xB5, PREV_TRACK: 0xB6, STOP: 0xB7, MUTE: 0xE2,
+                   VOLUME_UP: 0xE9, VOLUME_DOWN: 0xEA, BRIGHTNESS_UP: 0x6F, BRIGHTNESS_DOWN: 0x70 };
+
+// Keyboard layouts: character → [modifier, usage] as typed on the *computer's* layout.
+// Adding a layout (uk, de, …) is a browser-only change: the firmware never sees characters.
+const LAYOUTS = {
+  us: {
+    name: 'US English',
+    map: (() => {
+      const m = { ' ': [0, 0x2C], '\n': [0, 0x28], '\t': [0, 0x2B] };
+      for (let i = 0; i < 26; i++) {
+        m[String.fromCharCode(97 + i)] = [0, 0x04 + i];
+        m[String.fromCharCode(65 + i)] = [0x02, 0x04 + i];
+      }
+      '1234567890'.split('').forEach((c, i) => { m[c] = [0, 0x1E + i]; });
+      '!@#$%^&*()'.split('').forEach((c, i) => { m[c] = [0x02, 0x1E + i]; });
+      const pairs = [['-', '_', 0x2D], ['=', '+', 0x2E], ['[', '{', 0x2F], [']', '}', 0x30], ['\\', '|', 0x31],
+                     [';', ':', 0x33], ["'", '"', 0x34], ['`', '~', 0x35], [',', '<', 0x36], ['.', '>', 0x37], ['/', '?', 0x38]];
+      pairs.forEach(([plain, shifted, u]) => { m[plain] = [0, u]; m[shifted] = [0x02, u]; });
+      return m;
+    })(),
+  },
+};
+const layout = () => LAYOUTS[config.settings.hostLayout] || LAYOUTS.us;
+
+// Characters in `text` that the computer's layout can't type (unique, in order).
+function untypable(text) {
+  const map = layout().map;
+  return [...new Set([...(text || '')].filter(c => !map[c]))];
+}
+const hex2 = (n) => n.toString(16).toUpperCase().padStart(2, '0');
+function mixHex(a, b, t) {    // same maths as the style guide's `soft` tile: t of a over b
+  return [0, 2, 4].map(i => hex2(Math.round(parseInt(a.substr(i, 2), 16) * t + parseInt(b.substr(i, 2), 16) * (1 - t)))).join('');
+}
+
+// One tile's action → compiled action. Returns { a } or { error }.
+function compileAction(action) {
+  if (action.type === 'keys') {
+    let m = 0; const k = [];
+    for (const name of action.keys) {
+      if (name in MODIFIERS) m |= MODIFIERS[name];
+      else if (name in USAGE) k.push(USAGE[name]);
+      else return { error: `Unknown key “${name}”.` };
+    }
+    if (!m && !k.length) return { error: 'Add at least one key.' };
+    if (k.length > 6) return { error: 'At most 6 non-modifier keys.' };
+    return { a: { t: 'k', m, k } };
+  }
+  if (action.type === 'media') {
+    return action.key in CONSUMER ? { a: { t: 'c', u: CONSUMER[action.key] } } : { error: `Unknown media key “${action.key}”.` };
+  }
+  if (action.type === 'text') {
+    const bad = untypable(action.text);
+    if (bad.length) return { error: `Can't type ${bad.map(c => `“${c === '\n' ? '↵' : c}”`).join(', ')} on a ${layout().name} keyboard.` };
+    if ([...action.text].length > 1024) return { error: 'Text is longer than 1024 characters.' };
+    const map = layout().map;
+    return { a: { t: 's', d: action.charDelayMs ?? 10, s: [...action.text].map(c => hex2(map[c][0]) + hex2(map[c][1])).join('') } };
+  }
+  return { error: `Unknown action type “${action.type}”.` };
+}
+
+const ICON_INDEX = Object.fromEntries(Object.keys(ICONS).filter(n => n !== 'none').map((n, i) => [n, i + 1]));
+
+function compileTile(t) {
+  const [sw, on] = SWATCHES[t.color] || SWATCHES.graphite, swHex = sw.slice(1), onHex = COLOR_HEX[on];
+  const soft = t.style === 'soft', { a } = compileAction(t.action);
+  return { x: t.x, y: t.y, w: t.w, h: t.h, label: t.label, icon: ICON_INDEX[t.icon] || 0,
+           bg: soft ? mixHex(swHex, SURFACE_1, 0.16) : swHex, fg: soft ? COLOR_HEX['var(--text)'] : onHex,
+           accent: soft ? swHex : onHex, bar: soft, a: a ?? null };   // null = action has an error; Save is blocked
+}
+function compilePad() {
+  const s = config.settings;
+  return { v: 1, name: s.deviceName, density: s.density === 'compact' ? 1 : 0, brightness: s.brightness,
+           dim: s.dimAfterSec, pages: config.pages.map(p => ({ name: p.name, tiles: p.tiles.map(compileTile) })) };
+}
+// The whole file as PUT /api/config would send it (compact JSON, as saved).
+function savedFile() {
+  return JSON.stringify({ version: config.version, editor: { settings: config.settings, pages: config.pages }, pad: compilePad() });
+}
+const MAX_FILE = 32 * 1024;
+
+// Everything that blocks a save, across all pages: grid rules, actions, file size.
+function saveProblems() {
+  const out = [];
+  config.pages.forEach(p => p.tiles.forEach(t => {
+    const fit = fitError(t, p), act = compileAction(t.action).error;
+    if (fit) out.push(`${p.name} › ${t.label}: ${fit}`);
+    if (act) out.push(`${p.name} › ${t.label}: ${act}`);
+  }));
+  const size = new Blob([savedFile()]).size;
+  if (size > MAX_FILE) out.push(`The layout is ${(size / 1024).toFixed(1)} KB; the device limit is 32 KB.`);
+  return out;
+}
 const svg = (name, cls = 'i') => `<svg class="${cls}" viewBox="0 0 20 20">${ICONS[name] || ''}</svg>`;
 
 // ---- config (docs/config-schema.md, version 1) -----------------------------
 const config = {
   version: 1,
-  settings: { deviceName: 'TriggerGrid', density: 'regular', brightness: 180, dimAfterSec: 120 },
+  settings: { deviceName: 'TriggerGrid', density: 'regular', brightness: 180, dimAfterSec: 120, hostLayout: 'us' },
   pages: [
     { id: 'edit', name: 'Editing', tiles: [
       { id: 'copy',  x: 0, y: 0, w: 1, h: 1, label: 'Copy',  icon: 'copy',  color: 'azure', style: 'solid', action: { type: 'keys', keys: ['CTRL', 'C'] } },
@@ -416,6 +535,16 @@ function fitDevice() {
   if (note) note.textContent = s < 1 ? `Scaled to ${Math.round(s * 100)}%.` : 'Actual size.';
 }
 
+function updateJson() {
+  if (!$('json-editor')) return;
+  $('json-editor').textContent = JSON.stringify(page(), null, 2);
+  $('json-pad').textContent = JSON.stringify(compilePad().pages[state.page], null, 2);
+  const size = new Blob([savedFile()]).size, pct = Math.min(100, size / MAX_FILE * 100);
+  $('json-foot').innerHTML = `<span class="meter"><i style="width:${pct}%;${size > MAX_FILE ? 'background:var(--error)' : ''}"></i></span>
+    Whole file ${(size / 1024).toFixed(1)} KB of the 32 KB device limit`;
+}
+document.addEventListener('toggle', (e) => { if (e.target.id === 'json') state.jsonOpen = e.target.open; }, true);
+
 // ---- tile tray: templates you drag onto the screen -------------------------
 const TEMPLATES = [
   { group: 'Blank' },
@@ -468,8 +597,23 @@ function renderLayout() {
     <div class="hint"><span id="scale-note">Actual size.</span> Drag tiles to move them, drag the white corner to resize,
       or drag a new tile in from the tray. Arrow keys nudge the selected tile.</div>
     ${renderTray()}
-    <details class="json"><summary>config.json for this page</summary><pre>${esc(JSON.stringify(page(), null, 2))}</pre></details>`;
+    <details class="json" id="json" ${state.jsonOpen ? 'open' : ''}><summary>config.json: what Save sends to the device</summary>
+      <div class="json-panes">
+        <div><span class="json-title">editor <span class="note">· this page, for the browser</span></span><pre id="json-editor"></pre></div>
+        <div><span class="json-title">pad <span class="note">· this page compiled, the only part the device reads</span></span><pre id="json-pad"></pre></div>
+      </div>
+      <div class="json-foot" id="json-foot"></div>
+    </details>`;
+  updateJson();
   fitDevice();
+}
+
+function textNote(a) {
+  const bad = untypable(a.text);
+  const count = `${[...(a.text || '')].length} / 1024 · typed on a ${layout().name} keyboard`;
+  return bad.length
+    ? `<span class="err">${esc(compileAction(a).error)} Remove them, or change the computer's keyboard layout in Settings.</span>`
+    : `<span class="note">${count}</span>`;
 }
 
 function renderEditor() {
@@ -479,24 +623,25 @@ function renderEditor() {
     return;
   }
   const a = t.action, err = fitError(t);
+  // Build only the form for this tile's action type (the others' fields don't exist on it).
   const actionFields = {
-    keys: `
+    keys: () => `
       <div class="field"><span class="lbl">Key combo</span>
         <div class="keys">${a.keys.map((k, i) => `${i ? '<span class="plus">+</span>' : ''}<span class="keycap">${esc(k)}<button data-delkey="${i}" aria-label="Remove ${esc(k)}">×</button></span>`).join('')}</div>
         <div class="row"><button class="btn small ${state.recording ? 'recording' : ''}" id="record">
           <svg class="i" viewBox="0 0 20 20"><circle cx="10" cy="10" r="4" fill="currentColor" stroke="none"/></svg>
           ${state.recording ? 'Press a key combo…' : 'Record combo'}</button>
           <span class="note">US layout key positions</span></div></div>`,
-    text: `
+    text: () => `
       <div class="field"><label for="f-text">Text to type</label>
         <textarea id="f-text" maxlength="1024">${esc(a.text || '')}</textarea>
-        <span class="note">${(a.text || '').length} / 1024 · printable ASCII, Enter and Tab</span></div>
+        <span id="text-note">${textNote(a)}</span></div>
       <div class="field"><label for="f-delay">Delay between characters (ms)</label>
         <input type="number" id="f-delay" min="5" max="100" value="${a.charDelayMs ?? 10}"></div>`,
-    media: `
+    media: () => `
       <div class="field"><label for="f-media">Media key</label>
         <select id="f-media">${MEDIA_KEYS.map(k => `<option ${k === a.key ? 'selected' : ''}>${k}</option>`).join('')}</select></div>`,
-  }[a.type];
+  }[a.type]();
 
   $('editor').innerHTML = `
     <h2><span class="sw-dot" style="background:${SWATCHES[t.color][0]}"></span>Edit tile</h2>
@@ -544,6 +689,10 @@ function renderDevice() {
       <div class="card"><h3>Bluetooth<span class="state" style="color:var(--ok)">Connected</span></h3>
         <dl class="kv"><dt>Name</dt><dd>${esc(s.deviceName)}</dd><dt>Paired with</dt><dd>Desk-PC</dd></dl>
         <div class="field"><label for="f-name">Device name</label><input type="text" id="f-name" maxlength="24" value="${esc(s.deviceName)}"></div>
+        <div class="field"><label for="f-layout">Computer's keyboard layout</label>
+          <select id="f-layout">${Object.entries(LAYOUTS).map(([k, l]) => `<option value="${k}" ${k === s.hostLayout ? 'selected' : ''}>${l.name}</option>`).join('')}
+            <option disabled>UK English (coming later)</option><option disabled>German (coming later)</option></select>
+          <span class="note">Match the layout set on the computer. Text tiles are turned into keystrokes for this layout.</span></div>
         <div class="row"><button class="btn small danger" data-toast="Bluetooth pairing cleared" data-color="var(--warn)">Forget paired computer</button></div>
       </div>
       <div class="card"><h3>Security<span class="state" style="color:var(--warn)">No PIN</span></h3>
@@ -592,12 +741,19 @@ document.addEventListener('click', (e) => {
   }
   if (d.delkey) { t.action.keys.splice(+d.delkey, 1); markDirty(); return render(); }
   if (el.id === 'record') { state.recording = !state.recording; return renderEditor(); }
-  if (el.id === 'try') return toast(`Sent “${t.label}” to Desk-PC`);
+  if (el.id === 'try') {
+    const c = compileAction(t.action);
+    if (c.error) return toast(c.error, 'var(--error)');
+    const body = JSON.stringify(c.a);   // exactly what POST /api/test would send
+    return toast(`Sent “${t.label}” to Desk-PC: ${body.length > 60 ? body.slice(0, 57) + '…' : body}`);
+  }
   if (el.id === 'delete') { page().tiles = page().tiles.filter(o => o !== t); state.tile = null; markDirty(); return render(); }
   if (el.id === 'save') {
-    const bad = config.pages.flatMap(p => p.tiles.filter(x => fitError(x, p)).map(x => `${p.name}: ${x.label}`));
-    if (bad.length) return toast(`Can't save: ${bad[0]} doesn't fit`, 'var(--error)');
-    state.dirty = false; $('dirty').classList.remove('on'); $('save').disabled = true; return toast('Saved. The pad has updated.');
+    const bad = saveProblems();
+    if (bad.length) return toast(`Can't save. ${bad[0]}${bad.length > 1 ? ` (+${bad.length - 1} more)` : ''}`, 'var(--error)');
+    const kb = (new Blob([savedFile()]).size / 1024).toFixed(1);
+    state.dirty = false; $('dirty').classList.remove('on'); $('save').disabled = true;
+    return toast(`Saved ${kb} KB. The pad has updated.`);
   }
   if (d.toast) return toast(d.toast, d.color);
 });
@@ -613,6 +769,7 @@ document.addEventListener('input', (e) => {
     case 'f-bright': config.settings.brightness = +v; e.target.previousElementSibling.querySelector('.swatch-name').textContent = '· ' + v; markDirty(); return;
     case 'f-dim': config.settings.dimAfterSec = +v; markDirty(); return;
     case 'f-name': config.settings.deviceName = v; markDirty(); return;
+    case 'f-layout': config.settings.hostLayout = v; markDirty(); return;
     default: return;
   }
   markDirty();
@@ -620,7 +777,8 @@ document.addEventListener('input', (e) => {
   renderSidebar();
   const stage = $('stage').querySelector('.device-wrap');
   if (stage) { stage.outerHTML = renderPreview(); fitDevice(); }
-  const pre = $('stage').querySelector('pre'); if (pre) pre.textContent = JSON.stringify(page(), null, 2);
+  updateJson();
+  if (e.target.id === 'f-text') $('text-note').innerHTML = textNote(tile().action);
 });
 
 // "Record combo": capture modifiers + one key and map to config-schema key names.
